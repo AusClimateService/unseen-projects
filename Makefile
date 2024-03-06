@@ -5,11 +5,9 @@ include ${MODEL_CONFIG}
 
 DASK_CONFIG=dask_local.yml
 
-FCST_DATA=file_lists/${MODEL}_${EXPERIMENT}_${VAR}_files.txt
-FCST_TOS_DATA=file_lists/${MODEL}_${EXPERIMENT}_tos_files.txt
+FCST_DATA=/g/data/xv83/unseen-projects/code/file_lists/${MODEL}_${EXPERIMENT}_${VAR}_files.txt
 OBS_DATA := $(sort $(wildcard /g/data/xv83/agcd-csiro/precip/daily/precip-total_AGCD-CSIRO_r005_*_daily.nc))
-OBS_CONFIG=dataset_config/dataset_agcd_daily.yml
-SST_OBS=/g/data/ia39/aus-ref-clim-data-nci/hadisst/data/HadISST_sst.nc
+OBS_CONFIG=/g/data/xv83/unseen-projects/code/dataset_config/dataset_agcd_daily.yml
 
 METRIC_OBS=${PROJECT_DIR}/data/${METRIC}_${OBS_DATASET}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION_NAME}.nc
 METRIC_FCST=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
@@ -39,11 +37,6 @@ MOMENTS=/g/data/xv83/dbi599/miniconda3/envs/unseen-processing/bin/moments
 metric-obs : ${METRIC_OBS}
 ${RX15DAY_OBS} :
 	${FILEIO} ${OBS_DATA} $@ ${METRIC_OPTIONS} --metadata_file ${OBS_CONFIG}
-
-## nino34-obs : calculate Nino 3.4 in observations
-nino34-obs : ${NINO_OBS}
-${NINO_OBS} :
-	${FILEIO} ${SST_OBS} $@ --variables sst --spatial_agg mean --lat_bnds -5 5 --lon_bnds -170 -120 --lat_dim latitude --lon_dim longitude --anomaly 1980-01-01 2009-12-31 --anomaly_freq month --verbose
 
 ## metric-obs-analysis : analyse metric in observations
 rx15day-obs-analysis : AGCD_${REGION}.ipynb
@@ -110,15 +103,10 @@ moments-test-raw : ${MOMENTS_RAW_PLOT}
 ${MOMENTS_RAW_PLOT} : ${METRIC_FCST} ${METRIC_OBS}
 	${MOMENTS} $< $(word 2,$^) ${VAR} --outfile $@ --min_lead ${MIN_LEAD} --units mm
 
-## nino34-forecast : calculate Nino 3.4 in forecast ensemble
-nino34-forecast : ${NINO_FCST}
-${NINO_FCST} : ${FCST_TOS_DATA}
-	${FILEIO} $< $@ --forecast --variables tos --spatial_agg mean --lat_bnds -5 5 --verbose ${MODEL_NINO_OPTIONS} 
-
 ## metric-forecast-analysis : analysis of the metric from forecast data
 metric-forecast-analysis : analysis_${MODEL}.ipynb
-analysis_${MODEL}.ipynb : analysis.ipynb ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} ${SIMILARITY_ADDITIVE_BIAS} ${SIMILARITY_MULTIPLICATIVE_BIAS} ${SIMILARITY_RAW} ${INDEPENDENCE_PLOT} ${STABILITY_PLOT} ${FCST_DATA} ${NINO_FCST}
-	${PAPERMILL} -p agcd_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_plot $(word 9,$^) -p stability_plot $(word 10,$^) -p model_name ${MODEL} -p min_lead ${MIN_LEAD} -p region_name ${REGION_NAME} -p shape_file ${SHAPEFILE} -p file_list $(word 11,$^) -p nino_file $(word 12,$^) $< $@
+analysis_${MODEL}.ipynb : analysis.ipynb ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} ${SIMILARITY_ADDITIVE_BIAS} ${SIMILARITY_MULTIPLICATIVE_BIAS} ${SIMILARITY_RAW} ${INDEPENDENCE_PLOT} ${STABILITY_PLOT} ${FCST_DATA}
+	${PAPERMILL} -p metric ${METRIC} -p var ${VAR} -p obs_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_plot $(word 9,$^) -p stability_plot $(word 10,$^) -p model_name ${MODEL} -p min_lead ${MIN_LEAD} -p region_name ${REGION_NAME} -p shape_file ${SHAPEFILE} -p file_list $(word 11,$^) $< $@
 
 moments : ${MOMENTS_ADDITIVE_BIAS_PLOT} ${MOMENTS_MULTIPLICATIVE_BIAS_PLOT} ${MOMENTS_RAW_PLOT}
 

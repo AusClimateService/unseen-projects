@@ -1,12 +1,12 @@
 # Configuration file for TC Jasper analysis
 
-PROJECT_DIR=/g/data/xv83/dbi599/unseen-projects/tc-jasper
+PROJECT_DIR=/g/data/xv83/unseen-projects/outputs/tc-jasper
 
 VAR=pr
 METRIC=rx5day
 REGION=daintree-river
 TIMESCALE=annual-aug-to-sep
-SHAPEFILE=/g/data/xv83/dbi599/unseen-projects/tc-jasper/shapefiles/daintree_river.shp
+SHAPEFILE=${PROJECT_DIR}/shapefiles/daintree_river.shp
 OBS_DATASET=AGCD-CSIRO
 
 METRIC_OPTIONS_FCST=--lat_bnds -20 -10 --lon_bnds 140 150 --shp_overlap 0.1 --output_chunks lead_time=50
