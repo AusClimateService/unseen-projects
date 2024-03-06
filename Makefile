@@ -45,7 +45,8 @@ ${METRIC_OBS} :
 ## metric-forecast : calculate metric in forecast ensemble
 metric-forecast : ${METRIC_FCST}
 ${METRIC_FCST} : ${FCST_DATA}
-	${FILEIO} $< $@ --forecast ${METRIC_OPTIONS} ${METRIC_OPTIONS_FCST} ${MODEL_IO_OPTIONS} --dask_config ${DASK_CONFIG}
+	${FILEIO} $< $@ --forecast ${METRIC_OPTIONS} ${METRIC_OPTIONS_FCST} ${MODEL_IO_OPTIONS} 
+#--dask_config ${DASK_CONFIG}
 
 ## independence-test : independence test for different lead times
 independence-test : ${INDEPENDENCE_PLOT}
@@ -63,12 +64,12 @@ ${STABILITY_PLOT_GEV} : ${METRIC_FCST}
 	${STABILITY} $< ${VAR} ${METRIC} --start_years ${STABILITY_START_YEARS} --outfile $@ --return_method gev --uncertainty --units ${METRIC_PLOT_LABEL} --ymax ${METRIC_PLOT_UPPER_LIMIT}
 
 ## bias-correction-additive : additive bias corrected forecast data using observations
-bias-correction : ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED}
+bias-correction-additive : ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED}
 ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} : ${METRIC_FCST} ${METRIC_OBS}
 	${BIAS_CORRECTION} $< $(word 2,$^) ${VAR} additive $@ --base_period ${BASE_PERIOD} --rounding_freq A --min_lead ${MIN_LEAD}
 
 ## bias-correction-multiplicative : multiplicative bias corrected forecast data using observations
-bias-correction : ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED}
+bias-correction-multiplicative : ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED}
 ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} : ${METRIC_FCST} ${METRIC_OBS}
 	${BIAS_CORRECTION} $< $(word 2,$^) ${VAR} multiplicative $@ --base_period ${BASE_PERIOD} --rounding_freq A --min_lead ${MIN_LEAD}
 
@@ -104,8 +105,8 @@ ${MOMENTS_RAW_PLOT} : ${METRIC_FCST} ${METRIC_OBS}
 
 ## metric-forecast-analysis : analysis of the metric from forecast data
 metric-forecast-analysis : analysis_${MODEL}.ipynb
-analysis_${MODEL}.ipynb : analysis.ipynb ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} ${SIMILARITY_ADDITIVE_BIAS} ${SIMILARITY_MULTIPLICATIVE_BIAS} ${SIMILARITY_RAW} ${INDEPENDENCE_PLOT} ${STABILITY_PLOT} ${FCST_DATA}
-	${PAPERMILL} -p metric ${METRIC} -p var ${VAR} -p metric_plot_label ${METRIC_PLOT_LABEL} -p metric_plot_upper_limit ${METRIC_PLOT_UPPER_LIMIT} -p obs_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_plot $(word 9,$^) -p stability_plot $(word 10,$^) -p model_name ${MODEL} -p min_lead ${MIN_LEAD} -p region_name ${REGION_NAME} -p shape_file ${SHAPEFILE} -p file_list $(word 11,$^) $< $@
+analysis_${MODEL}.ipynb : analysis.ipynb ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} ${SIMILARITY_ADDITIVE_BIAS} ${SIMILARITY_MULTIPLICATIVE_BIAS} ${SIMILARITY_RAW} ${INDEPENDENCE_PLOT} ${STABILITY_PLOT_EMPIRICAL} ${STABILITY_PLOT_GEV} ${FCST_DATA}
+	${PAPERMILL} -p metric ${METRIC} -p var ${VAR} -p metric_plot_label ${METRIC_PLOT_LABEL} -p metric_plot_upper_limit ${METRIC_PLOT_UPPER_LIMIT} -p obs_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_plot $(word 9,$^) -p stability_plot_empirical $(word 10,$^) -p stability_plot_gev $(word 11,$^) -p model_name ${MODEL} -p min_lead ${MIN_LEAD} -p region_name ${REGION} -p shape_file ${SHAPEFILE} -p file_list $(word 12,$^) $< $@
 
 moments : ${MOMENTS_ADDITIVE_BIAS_PLOT} ${MOMENTS_MULTIPLICATIVE_BIAS_PLOT} ${MOMENTS_RAW_PLOT}
 
