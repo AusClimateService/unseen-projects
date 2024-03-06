@@ -1,21 +1,20 @@
 .PHONY: help moments
 
-include ${PROJECT_CONFIG}
-include ${MODEL_CONFIG}
+include ${PROJECT_DETAILS}
+include ${MODEL_DETAILS}
+include ${OBS_DETAILS}
 
-DASK_CONFIG=dask_local.yml
+DASK_CONFIG=/g/data/xv83/unseen-projects/code/dask_local.yml
 
 FCST_DATA=/g/data/xv83/unseen-projects/code/file_lists/${MODEL}_${EXPERIMENT}_${VAR}_files.txt
-OBS_DATA := $(sort $(wildcard /g/data/xv83/agcd-csiro/precip/daily/precip-total_AGCD-CSIRO_r005_*_daily.nc))
-OBS_CONFIG=/g/data/xv83/unseen-projects/code/dataset_config/dataset_agcd_daily.yml
 
-METRIC_OBS=${PROJECT_DIR}/data/${METRIC}_${OBS_DATASET}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION_NAME}.nc
+METRIC_OBS=${PROJECT_DIR}/data/${METRIC}_${OBS_DATASET}_${OBS_TIME_PERIOD}_${TIMESCALE}_${REGION}.nc
 METRIC_FCST=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
 INDEPENDENCE_PLOT=${PROJECT_DIR}/figures/independence-test_${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.png
 STABILITY_PLOT_EMPIRICAL=${PROJECT_DIR}/figures/stability-test-empirical_${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.png
 STABILITY_PLOT_GEV=${PROJECT_DIR}/figures/stability-test-gev_${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.png
-RX15DAY_FCST_ADDITIVE_BIAS_CORRECTED=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
-RX15DAY_FCST_MULTIPLICATIVE_BIAS_CORRECTED=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
+METRIC_FCST_ADDITIVE_BIAS_CORRECTED=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
+METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
 SIMILARITY_ADDITIVE_BIAS=${PROJECT_DIR}/data/similarity-test_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
 SIMILARITY_MULTIPLICATIVE_BIAS=${PROJECT_DIR}/data/similarity-test_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
 SIMILARITY_RAW=${PROJECT_DIR}/data/similarity-test_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_${OBS_DATASET}.nc
@@ -35,13 +34,13 @@ MOMENTS=/g/data/xv83/dbi599/miniconda3/envs/unseen-processing/bin/moments
 
 ## metric-obs : calculate the metric in observations
 metric-obs : ${METRIC_OBS}
-${RX15DAY_OBS} :
+${METRIC_OBS} :
 	${FILEIO} ${OBS_DATA} $@ ${METRIC_OPTIONS} --metadata_file ${OBS_CONFIG}
 
 ## metric-obs-analysis : analyse metric in observations
-rx15day-obs-analysis : AGCD_${REGION}.ipynb
-AGCD_${REGION_NAME}.ipynb : AGCD.ipynb ${METRIC_OBS} ${NINO_OBS}
-	${PAPERMILL} -p rx15day_file $(word 2,$^) -p region_name ${REGION} -p nino_file $(word 3,$^) $< $@	
+#metric-obs-analysis : AGCD_${REGION}.ipynb
+#obs_${REGION_NAME}.ipynb : obs.ipynb ${METRIC_OBS}
+#	${PAPERMILL} -p obs_file $(word 2,$^) -p region_name ${REGION} -p nino_file $(word 3,$^) $< $@	
 
 ## metric-forecast : calculate metric in forecast ensemble
 metric-forecast : ${METRIC_FCST}
@@ -50,18 +49,18 @@ ${METRIC_FCST} : ${FCST_DATA}
 
 ## independence-test : independence test for different lead times
 independence-test : ${INDEPENDENCE_PLOT}
-${INDEPENDENCE_PLOT} : ${RX15DAY_FCST}
+${INDEPENDENCE_PLOT} : ${METRIC_FCST}
 	${INDEPENDENCE} $< ${VAR} $@
 
 ## stability-test-empirical : stability tests (empirical)
 stability-test-empirical : ${STABILITY_PLOT_EMPIRICAL}
 ${STABILITY_PLOT_EMPIRICAL} : ${METRIC_FCST}
-	${STABILITY} $< ${VAR} ${METRIC} --start_years ${STABILITY_START_YEARS} --outfile $@ --return_method empirical --uncertainty --units "Rx15day (mm)" --ymax 550
+	${STABILITY} $< ${VAR} ${METRIC} --start_years ${STABILITY_START_YEARS} --outfile $@ --return_method empirical --uncertainty --units ${METRIC_PLOT_LABEL} --ymax ${METRIC_PLOT_UPPER_LIMIT}
 
 ## stability-test-gev : stability tests (GEV fit)
 stability-test-gev : ${STABILITY_PLOT_GEV}
-${STABILITY_PLOT_GEV} : ${RX15DAY_FCST}
-	${STABILITY} $< ${VAR} ${METRIC} --start_years ${STABILITY_START_YEARS} --outfile $@ --return_method gev --uncertainty --units "Rx15day (mm)" --ymax 550
+${STABILITY_PLOT_GEV} : ${METRIC_FCST}
+	${STABILITY} $< ${VAR} ${METRIC} --start_years ${STABILITY_START_YEARS} --outfile $@ --return_method gev --uncertainty --units ${METRIC_PLOT_LABEL} --ymax ${METRIC_PLOT_UPPER_LIMIT}
 
 ## bias-correction-additive : additive bias corrected forecast data using observations
 bias-correction : ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED}
@@ -106,13 +105,13 @@ ${MOMENTS_RAW_PLOT} : ${METRIC_FCST} ${METRIC_OBS}
 ## metric-forecast-analysis : analysis of the metric from forecast data
 metric-forecast-analysis : analysis_${MODEL}.ipynb
 analysis_${MODEL}.ipynb : analysis.ipynb ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} ${SIMILARITY_ADDITIVE_BIAS} ${SIMILARITY_MULTIPLICATIVE_BIAS} ${SIMILARITY_RAW} ${INDEPENDENCE_PLOT} ${STABILITY_PLOT} ${FCST_DATA}
-	${PAPERMILL} -p metric ${METRIC} -p var ${VAR} -p obs_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_plot $(word 9,$^) -p stability_plot $(word 10,$^) -p model_name ${MODEL} -p min_lead ${MIN_LEAD} -p region_name ${REGION_NAME} -p shape_file ${SHAPEFILE} -p file_list $(word 11,$^) $< $@
+	${PAPERMILL} -p metric ${METRIC} -p var ${VAR} -p metric_plot_label ${METRIC_PLOT_LABEL} -p metric_plot_upper_limit ${METRIC_PLOT_UPPER_LIMIT} -p obs_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_plot $(word 9,$^) -p stability_plot $(word 10,$^) -p model_name ${MODEL} -p min_lead ${MIN_LEAD} -p region_name ${REGION_NAME} -p shape_file ${SHAPEFILE} -p file_list $(word 11,$^) $< $@
 
 moments : ${MOMENTS_ADDITIVE_BIAS_PLOT} ${MOMENTS_MULTIPLICATIVE_BIAS_PLOT} ${MOMENTS_RAW_PLOT}
 
 ## help : show this message
 help :
-	@echo 'make [target] [-Bnf] CONFIG=config_file.mk'
+	@echo 'make [target] [-Bnf] PROJECT_DETAILS=project.mk MODEL_DETAILS=model.mk OBS_DETAILS=obs.mk'
 	@echo ''
 	@echo 'valid targets:'
 	@grep -h -E '^##' ${MAKEFILE_LIST} | sed -e 's/## //g' | column -t -s ':'
