@@ -115,9 +115,9 @@ def gsr_events(data, decile, time_dim="time", **kwargs):
         "duration",
         "time_start",
         "time_end",
-        "mean",
-        "max",
-        "min",
+        "gsr_mean",
+        "gsr_max",
+        "gsr_min",
         "grs_next",
         "decile_next",
     ]
@@ -218,9 +218,9 @@ def get_event_properties(
         ds["time_start"][loc] = time[inds][0]
         ds["time_end"][loc] = time[inds][-1]
 
-        ds["mean"][loc] = np.mean(dx_ev)
-        ds["max"][loc] = np.max(dx_ev)
-        ds["min"][loc] = np.min(dx_ev)
+        ds["gsr_mean"][loc] = np.mean(dx_ev)
+        ds["gsr_max"][loc] = np.max(dx_ev)
+        ds["gsr_min"][loc] = np.min(dx_ev)
 
         if inds[-1] + 1 < len(data):
             ds["grs_next"][loc] = data[inds[-1] + 1]  # Next year pr
@@ -497,10 +497,9 @@ def get_DCPP_data_regions(model, regions):
     return data, decile
 
 
-def get_AGCD_data_aus():
+def get_AGCD_data_au():
     """Get Apr-Oct rainfall and decile dataset for all AGCD grid points."""
     file_data = home / "data/growing-season-pr_AGCD-monthly_1900-2022_AMJJASO_gn.nc"
-    file_decile = file_data.parent / (file_data.stem + "_aus_decile.nc")
 
     data = xr.open_dataset(file_data).pr
 
@@ -508,12 +507,7 @@ def get_AGCD_data_aus():
     gdf = gp.read_file(home / "shapefiles/australia.shp")
     data = select_shapefile_regions(data, gdf)
 
-    if file_decile.exists():
-        decile = xr.open_dataset(file_decile).pr
-    else:
-        decile = get_deciles(data, core_dim=["time"], decile_dims="time")
-        decile.to_dataset()
-        decile.to_netcdf(file_decile, compute=True)
+    decile = get_deciles(data, core_dim=["time"], decile_dims="time")
 
     data = data.where(decile.notnull())
     data = data.sel(lon=slice(110, 155))
@@ -525,14 +519,17 @@ def get_AGCD_data_aus():
     return data, decile
 
 
-def get_DCPP_data_aus(model):
+def get_DCPP_data_au(model):
     """Get GSR and decile data for a DCPP model over Australia."""
     file_data = list(home.glob(f"data/growing-season-pr_{model}*_gn.nc"))[0]
     data = xr.open_dataset(file_data).pr
     # Apply shapefile mask of Australia
-    data = data.sel(lat=slice(-50, -5), lon=slice(105, 160))
+    data = data.sel(lat=slice(-50, -10), lon=slice(105, 155))
     gdf = gp.read_file(home / "shapefiles/australia.shp")
-    data = select_shapefile_regions(data, gdf, overlap_fraction=0.01)
+    try:
+        data = select_shapefile_regions(data, gdf, overlap_fraction=0.01)
+    except AssertionError:
+        data = select_shapefile_regions(data, gdf)
     for dim in ["lat", "lon"]:
         data = data.dropna(dim, how="all")
 
@@ -543,14 +540,26 @@ def get_DCPP_data_aus(model):
     return data, decile
 
 
-def get_gsr_events_aus(data, decile, event, model, time_dim="time"):
+def get_events_au(data, decile, event, model, time_dim="time"):
     """Get GSR event property dataset for all grid points."""
+
+    def convert_time(time_start, time_end):
+        """Convert time_start and time_end to datetime64[ns]."""
+        if not isinstance(time_start, (float, int)) and pd.notnull(time_start):
+            time_start = np.datetime64(time_start.isoformat())
+            time_end = np.datetime64(time_end.isoformat())
+        else:
+            time_end = pd.NaT
+            time_start = pd.NaT
+        return time_start, time_end
+
     file_events = (
         home / f"data/{event.event_type}_{event.min_duration}yr_events_aus_{model}.nc"
     )
 
     if file_events.exists():
         ds = xr.open_dataset(file_events)
+
     else:
         _, ds = gsr_events(
             data,
@@ -562,8 +571,20 @@ def get_gsr_events_aus(data, decile, event, model, time_dim="time"):
             minimize=event.minimize,
             operator=event.operator,
         )
+
+        if ds["time_start"].dtype == "object":
+            # Convert time_start and time_end to datetime64[ns]
+            ds["time_start"], ds["time_end"] = xr.apply_ufunc(
+                convert_time,
+                ds.time_start,
+                ds.time_end,
+                input_core_dims=[[], []],
+                output_core_dims=[[], []],
+                vectorize=True,
+                dask="parallelized",
+            )
         ds = ds.load()
-        # ds.to_netcdf(file_events)
+        ds.to_netcdf(file_events)
 
     # Check event durations meets criteria
     duration = ds.duration.values
@@ -573,6 +594,24 @@ def get_gsr_events_aus(data, decile, event, model, time_dim="time"):
         assert np.all(duration >= event.min_duration, where=~np.isnan(duration))
 
     return ds
+
+
+def event_inds(m, min_duration):
+    """Get indexes of min_duration events in masked decile timeseries."""
+    if isinstance(m, xr.DataArray):
+        m = m.values  # Only works for numpy arrays
+
+    if min_duration == 1:
+        inds = np.flatnonzero(m)
+    elif min_duration == 2:
+        inds = np.flatnonzero(m[:-1] & m[1:])
+        # Drop consecutive "False" events
+        inds = inds[m[inds]]
+    elif min_duration == 3:
+        inds = np.flatnonzero(m[:-2] & m[1:-1] & m[2:])
+        # Drop consecutive "False" events
+        inds = inds[m[inds]]
+    return inds
 
 
 def transition_probability(
@@ -615,19 +654,6 @@ def transition_probability(
     transtion_matrix plots.
     """
     assert min_duration <= 3
-
-    def event_inds(m, min_duration):
-        if min_duration == 1:
-            inds = np.flatnonzero(m)
-        elif min_duration == 2:
-            inds = np.flatnonzero(m[:-1] & m[1:])
-            # Drop consecutive "False" events
-            inds = inds[m[inds]]
-        elif min_duration == 3:
-            inds = np.flatnonzero(m[:-2] & m[1:-1] & m[2:])
-            # Drop consecutive "False" events
-            inds = inds[m[inds]]
-        return inds
 
     def bin_decile_next(m, decile, min_duration, bins):
         """Find indexes of min_duration events and bin the next year deciles."""
@@ -677,12 +703,76 @@ def transition_probability(
     return k, n, bins
 
 
+def transition_time(decile, min_duration, time_dim="time", transition_from="dry"):
+    """Count the transition times between n-year dry/wet events and next high/low decile year.
+
+    Parameters
+    ----------
+    decile : xa.DataArray
+        Decile values
+    min_duration : int
+        Minimum duration of event
+    time_dim : str, optional
+        Name of the time dimension, by default "time"
+    transition_from : {"dry", "wet"}, optional
+        Transition from dry or wet events, by default "dry"
+
+    Returns
+    -------
+    k : float or xr.DataArray
+        Count of years between low/high events
+    bins : array-like
+        Bin edges of output
+    """
+    assert min_duration <= 3
+
+    def transition_years(m0, m1, min_duration, bins):
+        """Find indexes of min_duration events and bin the next year deciles."""
+        inds = event_inds(m0, min_duration)
+        inds_alt = np.flatnonzero(m1)
+        # Number of years between dry/wet event and the next wet/dry year
+        if inds_alt.size == 0:
+            k = np.zeros(len(bins) - 1, dtype=int)
+            return k
+        max_alt_ind = inds_alt.max()
+        n_years = np.array(
+            [
+                inds_alt[inds_alt > i][0] - (i + min_duration - 1)
+                for i in inds
+                if i < max_alt_ind
+            ]
+        )
+        k, _ = np.histogram(n_years, bins=bins)
+        return k
+
+    # Create decile threshold mask
+    m0 = decile <= 3
+    m1 = decile >= 8
+    if transition_from == "wet":
+        m0, m1 = m1, m0
+
+    # Bins for transition years
+    max_years = 20  # Maximum duration (ensures consistent output size)
+    # Note that years[0] is the first year after the dry/wet event
+    bins = np.arange(max_years + 1, dtype=int)
+
+    k = xr.apply_ufunc(
+        transition_years,
+        m0,
+        m1,
+        input_core_dims=[[time_dim], [time_dim]],
+        output_core_dims=[["years"]],
+        vectorize=True,
+        # dask="parallelized",
+        kwargs=dict(min_duration=min_duration, bins=bins),
+        output_dtypes=["int"],
+    )
+
+    return k, bins
+
+
 def binom_ci(n, p=0.3):
     """Apply binomial test to calculate p-values."""
-    # if isinstance(p, (float, int)):
-    #     # Convert p to an array if it is a scalar
-    #     p = xr.full_like(n, p)
-
     ci0, ci1 = xr.apply_ufunc(
         scipy.stats.binom.interval,
         0.95,

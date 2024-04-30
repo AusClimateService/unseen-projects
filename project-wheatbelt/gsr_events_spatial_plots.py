@@ -14,9 +14,9 @@ from gsr_events import (
     home,
     models,
     Events,
-    get_AGCD_data_aus,
-    get_gsr_events_aus,
-    get_DCPP_data_aus,
+    get_AGCD_data_au,
+    get_events_au,
+    get_DCPP_data_au,
     transition_probability,
     binom_ci,
 )
@@ -31,7 +31,7 @@ def plot_shapefile(ax):
         lw=0.4,
         facecolor="none",
         edgecolor="r",
-        zorder=10,
+        zorder=1,
     )
     return ax
 
@@ -66,7 +66,7 @@ def plot_timeseries(ds, data, decile, lat, lon):
         ax.axvspan(t[0] - 0.33, t[-1] + 0.3, color="red", alpha=0.3)
 
 
-def plot_event_frequency(ds, model, event, n):
+def plot_frequency(ds, model, event, n):
     """Plot map of event frequency (per 100 years)."""
     da = ds.id.count("event")
     da = da * 100 / n  # per 100 years
@@ -94,7 +94,7 @@ def plot_event_frequency(ds, model, event, n):
     )
 
 
-def plot_event_duration(ds, model, event):
+def plot_duration(ds, model, event):
     """Plot maps of the median and maximum duration of events."""
     fig, ax = plt.subplots(
         1,
@@ -158,7 +158,7 @@ def plot_event_stats(ds, model, event):
         ax[i] = plot_aus_map(
             fig,
             ax[i],
-            ds[var].mean("event").load(),
+            ds["gsr_" + var].mean("event").load(),
             title=f"{model} {var} GSR ({event.name})",
             cbar_kwargs=dict(
                 label="Apr-Oct rainfall [mm]",
@@ -305,65 +305,46 @@ def transition_probability_maps(decile, event, model, time_dim="time"):
 
 if __name__ == "__main__":
     for model in models:
+        if model == "AGCD":
+            time_dim = "time"
+            data, decile = get_AGCD_data_au()
+            n = data.time.count("time")  # Total samples (for frq plot)
+        else:
+            time_dim = "lead_time"
+            data, decile = get_DCPP_data_au(model)
+            n = data["ensemble"].size * data["init_date"].size * data["lead_time"].size
+
         for operator in ["less", "greater"]:
-            if model == "AGCD":
-                time_dim = "time"
-                data, decile = get_AGCD_data_aus()
-                n = data.time.count("time")  # Total samples (for frq plot)
-            else:
-                time_dim = "lead_time"
-                data, decile = get_DCPP_data_aus(model)
-
-            # Plot transition probability map for 1-year decile events
-            persistance_probability_map(decile, Events(1, operator), model, time_dim)
-
-            for event in [Events(i + 1, operator) for i in range(3)]:
-                # Plot transition probability maps for n-year events (3 maps - dry, neutral, wet transitions)
-                transition_probability_maps(decile, event, model, time_dim)
-
-            # Events with fixed durations (n=2,3)
-            events = [
-                Events(min_duration=i, operator=operator, minimize=True) for i in [2, 3]
-            ]
-            # Stack n=2,3 year event property datasets along dimension "n"
-            ds = xr.concat(
-                [
-                    get_gsr_events_aus(
-                        data, decile, events[i], model, time_dim
-                    ).expand_dims({"n": i + 2})
-                    for i in range(2)
-                ],
-                dim="n",
-            )
 
             # Properties of events with no upper limit (for maximum duration plot)
             event_max = Events(min_duration=2, operator=operator, fixed_duration=False)
-            ds_max = get_gsr_events_aus(data, decile, event_max, model, time_dim)
+            ds_max = get_events_au(data, decile, event_max, model, time_dim)
+
+            # Stack n=2,3 year event property datasets along dimension "n"
+            evs = [Events(i, operator=operator, minimize=True) for i in [2, 3]]
+            ds = [get_events_au(data, decile, evs[i], model, time_dim) for i in [0, 1]]
+            ds = xr.concat([ds[i].expand_dims({"n": i + 1}) for i in [0, 1]], dim="n")
 
             if model != "AGCD":
-                # Stack DCPP model data & event properties
-                data_stack = data.stack(
-                    {"sample": ["init_date", "lead_time", "ensemble"]}
-                )
-                decile_stack = decile.stack(
-                    {"sample": ["init_date", "lead_time", "ensemble"]}
-                )
+                # Stack DCPP model event properties
                 ds = ds.rename({"event": "ev"})
                 ds = ds.stack({"event": ["init_date", "ensemble", "ev"]})
                 ds_max = ds_max.rename({"event": "ev"})
                 ds_max = ds_max.stack({"event": ["init_date", "ensemble", "ev"]})
-                n = data_stack["sample"].size  # Total samples (for frq plot)
 
-            # Plot median and maximum duration of consecutive years of high/low GSR
-            plot_event_duration(
-                ds_max,
-                model,
-                event_max,
-            )
+            # Plot transition probability map for 1-year decile events
+            persistance_probability_map(decile, Events(1, operator), model, time_dim)
+
+            # Transition probability maps for n-year events (dry, medium & wet transition maps)
+            for event in [Events(i + 1, operator) for i in range(3)]:
+                transition_probability_maps(decile, event, model, time_dim)
+
+            # Median and maximum duration of consecutive years of high/low GSR
+            plot_duration(ds_max, model, event_max)
 
             # Plot spatial maps for each n-year event duration
-            for i, event in enumerate(events):
+            for i, event in enumerate(evs):
                 # Plot frequency n-year events (# of events per 100 years)
-                plot_event_frequency(ds.isel(n=i, drop=True), model, event, n=n)
+                plot_frequency(ds.isel(n=i, drop=True), model, event, n=n)
                 # Maps of minimum, median, and maximum GSR during events
                 plot_event_stats(ds.isel(n=i, drop=True), model, event)

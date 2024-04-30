@@ -16,6 +16,7 @@ from gsr_events import (
     get_AGCD_data_regions,
     get_DCPP_data_regions,
     transition_probability,
+    transition_time,
     binom_ci,
 )
 
@@ -175,14 +176,14 @@ def next_year_decile_histograms(decile, model, event, time_dim, binned=False):
                 ax[i, j].set_xlabel("Decile")
     plt.tight_layout()
 
-    name = f"figures/{event.event_type}_next_year_decile_hist_{model}.png"
+    name = f"figures/{event.event_type[:4]}_next_year_decile_hist_{model}.png"
     if binned:
         name = name.replace(".png", "_binned.png")
     plt.savefig(home / name, dpi=200)
     plt.show()
 
 
-def transition_probability_matrix(decile, model, event):
+def transition_probability_matrix(decile, model, event, time_dim):
     """Plot the transition matrix for the next year GSR decile."""
     K = []
     N = []
@@ -271,7 +272,7 @@ def max_duration_histogram(data, decile, event, model, time_dim):
         ds_max = ds_max.stack({"event": ["init_date", "ensemble", "ev"]})
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    fig.suptitle(f"{model} duration of consecutive years with GSR {event_max.decile}")
+    fig.suptitle(f"{model} duration of consecutive years with GSR {event.decile}")
 
     for i, ax in enumerate(axes):
         bins = np.arange(
@@ -286,6 +287,49 @@ def max_duration_histogram(data, decile, event, model, time_dim):
         ax.yaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
     plt.tight_layout()
     plt.savefig(home / f"figures/{event.event_type[:4]}_duration_{model}.png", dpi=200)
+    plt.show()
+
+
+def transition_duration_histogram(decile, model, event, time_dim):
+    """Histogram of duration between a n-year low decile event and a high decile year."""
+    transition_from = "dry"
+    transition_to = "wet"
+    if event.operator == "greater":
+        transition_from, transition_to = transition_to, transition_from
+
+    fig, ax = plt.subplots(2, 3, figsize=(12, 9))
+    fig.suptitle(
+        f"{model} years between n {transition_from} years and a {transition_to} year"
+    )
+
+    for i, region in enumerate(regions):
+        for j, min_duration in enumerate([1, 2, 3]):
+            k, bins = transition_time(decile, min_duration, time_dim, transition_from)
+
+            if model != "AGCD":
+                k = k.sum(["init_date", "ensemble"])
+            k = k.where(k > 0, drop=True)
+            bins = bins[bins <= (k.years.max().item() + 1)]
+            ax[i, j].bar(
+                bins[1:],
+                k.isel(x=i),
+                width=1,
+                align="center",
+                color="b",
+                edgecolor="k",
+            )
+            ax[i, j].set_title(f"{region} region (n={min_duration} years)")
+            ax[i, j].set_xlabel("Duration [years]")
+            ax[i, j].set_ylabel("Frequency")
+            ax[i, j].set_xmargin(1e-3)
+            ax[i, j].xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            ax[i, j].yaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+    plt.tight_layout()
+    plt.savefig(
+        home
+        / f"figures/{event.event_type[:4]}_{transition_from}-to-{transition_to}_duration_{model}.png",
+        dpi=200,
+    )
     plt.show()
 
 
@@ -318,6 +362,7 @@ if __name__ == "__main__":
             next_year_decile_histograms(decile, model, event, time_dim, binned=False)
             next_year_decile_histograms(decile, model, event, time_dim, binned=True)
 
-            transition_probability_matrix(decile, model, event)
+            transition_probability_matrix(decile, model, event, time_dim)
 
             max_duration_histogram(data, decile, event_max, model, time_dim)
+            transition_duration_histogram(decile, model, event, time_dim)
