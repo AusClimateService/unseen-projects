@@ -1,108 +1,72 @@
 """Low/high growing season (Apr-Oct) rainfall event analysis.
 
-- Define events with consecutive years that meet a threshold with no overlapping years 
-    (get_events, gsr_events, gsr_events_properties, get_gsr_events_aus)
-- Calculate transition probabilities with overlapping years (transition_probability)
-- Open data and calculate deciles (get_deciles, get_AGCD_data_regions, get_DCPP_data_regions, get_AGCD_data_aus, get_DCPP_data_aus)
-- Apply binomial test to calculate condifence intervals & p-values (binom_ci, apply_binomtest, plot_binom)
-
-Notes
------
-- Calculate (Apr-Oct sum) rainfall for for AGCD monthly data (1900-2022) and DCPP models (1960-)
-(global and SA/WA shapefile regions) using the UNSEEN package.
-- Calculate deciles, where decile bins are based on all available years 
-(excluding model drift)
-- Define gsr_events
-    - Index 1: Three years in a row at or below 3 decile (make sure the events are not overlapping)
-    - Index 2: At least 3 consecutive years under 3 decile
-- Transition probability metrics
-    - if I had n years of low/high decile, how long to wait until better than average year
-    - if I had n years of low/high decile, what is the probability of a better-than-average year next year
-    - If I had a year of low/high decile, what is the probability the year next year will be the same (persistence probability)
-- Pot timeseries of deciles with events shaded
- Plot frequency of events
-- Plot median and maxium duration of consecutive years
-- Plot median and maxium of Apr-Oct rainfall during events
+- Define events with consecutive years that meet a threshold (no overlapping years)
+- Calculate transition probabilities (overlapping years)
 """
 
 from dataclasses import dataclass
-import geopandas as gp
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import scipy
 import xarray as xr
 
-from unseen.spatial_selection import select_shapefile_regions
-
-home = Path("/g/data/xv83/unseen-projects/outputs/wheatbelt")
-
-# Names for DCPP models (and AGCD)
-models = [
-    "AGCD",
-    "CAFE",
-    "CMCC-CM2-SR5",
-    "CanESM5",
-    "EC-Earth3",
-    "HadGEM3-GC31-MM",
-    "IPSL-CM6A-LR",
-    "MIROC6",
-    "MPI-ESM1-2-HR",
-    "MRI-ESM2-0",
-    "NorCPM1",
-]
+from process_gsr_data import home, gsr_data_regions
 
 
 @dataclass
 class Events:
-    """Class for keeping track of event details."""
-
-    min_duration: int
-    fixed_duration: bool
-    minimize: bool
-    operator: str
+    """Stores event metadata used in figure titles and labels."""
 
     def __init__(
         self,
-        min_duration: int,
-        operator: str,
+        n: int = 3,
+        operator: str = "less",
         fixed_duration: bool = True,
         minimize: bool = False,
     ):
-        self.min_duration = min_duration
+        """Initialise event metadata."""
+        # Number of event years / event minimum duration
+        self.n = n
+        self.min_duration = n
+        # Operator to apply a threshold (less/greater than)
         self.operator = operator
+        # Define events that are always min_duration long
         self.fixed_duration = fixed_duration
+        # Event contiguous region based on the lowest/highest total
         self.minimize = minimize
 
-        # For plot/file labels
+        # Figure labels
         if self.operator == "less":
-            self.event_type = "LGSR"
+            self.type = "LGSR"
             self.threshold = 3
             self.sym = "≤"
+            self.alt_name = "dry"
+            self.name = "low"
         else:
-            self.event_type = "HGSR"
+            self.type = "HGSR"
             self.threshold = 8
             self.sym = "≥"
+            self.alt_name = "wet"
+            self.name = "high"
 
         if not self.fixed_duration:
-            self.event_type += "_max"
+            self.type += "_max"
 
         if not self.minimize and self.fixed_duration:
-            self.event_type += "_first"
+            self.type += "_first"
 
         self.decile = f"{self.sym}{self.threshold} decile"
-        self.name = f"{self.min_duration}yr {self.decile}"
+        self.tercile = f"{self.sym}{self.threshold} tercile"
 
 
-def gsr_events(data, decile, time_dim="time", **kwargs):
+def gsr_events(data, decile, time="time", **kwargs):
     """Get events & event properties (vectorize get_events & get_event_properties)."""
 
     events = xr.apply_ufunc(
         get_events,
         decile,
-        input_core_dims=[[time_dim]],
-        output_core_dims=[[time_dim]],
+        input_core_dims=[[time]],
+        output_core_dims=[[time]],
         vectorize=True,
         dask="parallelized",
         kwargs=kwargs,
@@ -128,27 +92,28 @@ def gsr_events(data, decile, time_dim="time", **kwargs):
     # Convert times to numeric (days since epoch - avoids apply_ufunc dtype error)
     if data["time"].dtype == "datetime64[ns]":
         epoch = np.datetime64("1900-01-01T00:00:00")
-        time = (data["time"] - epoch) / np.timedelta64(1, "D")
+        times = (data["time"] - epoch) / np.timedelta64(1, "D")
     else:
         # Assumes "time" is the actual time variable
-        time = data["time"]
+        times = data["time"]
+
     dtypes = []
     for v in variables:
-        dtype = "float64" if "time" not in v else str(time.dtype)
+        dtype = "float64" if "time" not in v else str(times.dtype)
         dtypes.append(dtype)
 
     da_list = xr.apply_ufunc(
         get_event_properties,
-        data.chunk({time_dim: -1}),
-        decile.chunk({time_dim: -1}),
+        data.chunk({time: -1}),
+        decile.chunk({time: -1}),
         events,
-        time.chunk({time_dim: -1}),
-        input_core_dims=[[time_dim], [time_dim], [time_dim], [time_dim]],
+        times.chunk({time: -1}),
+        input_core_dims=[[time], [time], [time], [time]],
         output_core_dims=[["event"] for _ in range(len(variables))],
         vectorize=True,
         dask="parallelized",
         kwargs=dict(n_events=n_events, variables=variables),
-        output_dtypes=dtypes,  # ["float64"] * len(variables),
+        output_dtypes=dtypes,
         dask_gufunc_kwargs={"output_sizes": {"event": n_events}},
     )
 
@@ -167,7 +132,7 @@ def get_event_properties(
     data,
     decile,
     events,
-    time,
+    times,
     n_events,
     variables,
 ):
@@ -181,8 +146,12 @@ def get_event_properties(
         Decile timeseries
     events : xa.DataArray
         Time series of labeled events
-    dim : str, optional
-        Time dimension name, by default "time"
+    times : array-like
+        Time values
+    n_events : int
+        Number of events
+    variables : list of str
+        Event properties to calculate
 
     Returns
     -------
@@ -194,7 +163,7 @@ def get_event_properties(
 
     for v in variables:
         if "time" in v:
-            dtype = str(time.dtype)  # "datetime64[ns]"
+            dtype = str(times.dtype)
         else:
             dtype = "float64"
         ds[v] = xr.DataArray(
@@ -203,6 +172,7 @@ def get_event_properties(
 
     # Dict of event indexes (includes 0, which is not an event)
     val_inds = scipy.ndimage.value_indices(events.astype(dtype=int))
+
     # Loop through each event and calculate properties
     for ev in list(val_inds.keys())[:-1]:
 
@@ -215,8 +185,8 @@ def get_event_properties(
         ds["index_end"][loc] = inds[-1]
 
         ds["duration"][loc] = len(inds)
-        ds["time_start"][loc] = time[inds][0]
-        ds["time_end"][loc] = time[inds][-1]
+        ds["time_start"][loc] = times[inds][0]
+        ds["time_end"][loc] = times[inds][-1]
 
         ds["gsr_mean"][loc] = np.mean(dx_ev)
         ds["gsr_max"][loc] = np.max(dx_ev)
@@ -314,7 +284,7 @@ def get_events(
                     events[events_init == 0] = 0
 
                 if remainder > 0:
-                    # Set value of remaining timesteps to zero
+                    # Set value of remaining time steps to zero
                     events[inds[-remainder] : inds[-remainder] + remainder] = 0
 
             # Pick the lowest decile events within regions of consecutive values
@@ -421,126 +391,7 @@ def get_events(
     return events
 
 
-def get_deciles(data, core_dim="time", decile_dims="time"):
-    """Convert data to deciles.
-
-    Parameters
-    ----------
-    data : xr.DataArray
-        Data to convert to deciles
-    core_dim : str or list of str, optional
-        Core dimensions, by default "time"
-    decile_dims : str or list of str, optional
-        Dimensions to calculate decile bins over, by default "time"
-
-    Returns
-    -------
-    deciles : xr.DataArray
-        Decile values (same shape as input data)
-
-    Examples
-    --------
-    # Calculate deciles for an ensemble, with bins based on all data at a point
-    decile = get_ensemble_deciles(
-        data,
-        core_dim=["lead_time"],
-        decile_dims=["init_date", "ensemble", "lead_time"]
-    )
-    """
-
-    def cut(ds, bins, **kwargs):
-        """Apply pandas.cut - skips if bins contain dupilicates."""
-        if np.unique(bins).size < bins.size:
-            return ds * np.nan
-        return pd.cut(ds, bins=bins, include_lowest=True, **kwargs)
-
-    q = np.arange(11)
-    decile_bins = data.quantile(q=q / 10, dim=decile_dims)
-
-    decile = xr.apply_ufunc(
-        cut,
-        data,
-        decile_bins,
-        input_core_dims=[core_dim, ["quantile"]],
-        output_core_dims=[core_dim],
-        vectorize=True,
-        dask="parallelized",
-        kwargs=dict(labels=q[1:]),
-        output_dtypes=["float64"],
-    )
-
-    assert np.isnan(data).count() == np.isnan(decile).count()
-    return decile
-
-
-def get_AGCD_data_regions(regions):
-    """Get Apr-Oct rainfall and decile dataset for WA and SA regions."""
-    files = [list(home.glob(f"data/growing-s*_AGCD-mon*{n}.nc"))[0] for n in regions]
-    data = xr.concat(
-        [xr.open_dataset(f).assign_coords(dict(x=n)) for f, n in zip(files, regions)],
-        dim="x",
-    ).pr
-    decile = get_deciles(data, core_dim=["time"], decile_dims="time")
-    return data, decile
-
-
-def get_DCPP_data_regions(model, regions):
-    """Get Apr-Oct rainfall and decile dataset for WA and SA regions."""
-    files = [list(home.glob(f"data/growing-s*_{model}*{n}.nc"))[0] for n in regions]
-    data = xr.concat(
-        [xr.open_dataset(f).assign_coords(dict(x=n)) for f, n in zip(files, regions)],
-        dim="x",
-    ).pr
-    decile = get_deciles(
-        data, core_dim=["lead_time"], decile_dims=["init_date", "ensemble", "lead_time"]
-    )
-    return data, decile
-
-
-def get_AGCD_data_au():
-    """Get Apr-Oct rainfall and decile dataset for all AGCD grid points."""
-    file_data = home / "data/growing-season-pr_AGCD-monthly_1900-2022_AMJJASO_gn.nc"
-
-    data = xr.open_dataset(file_data).pr
-
-    # Apply shapefile mask of Australia
-    gdf = gp.read_file(home / "shapefiles/australia.shp")
-    data = select_shapefile_regions(data, gdf)
-
-    decile = get_deciles(data, core_dim=["time"], decile_dims="time")
-
-    data = data.where(decile.notnull())
-    data = data.sel(lon=slice(110, 155))
-
-    for dim in data.dims:
-        data = data.dropna(dim, how="all")
-        decile = decile.dropna(dim, how="all")
-
-    return data, decile
-
-
-def get_DCPP_data_au(model):
-    """Get GSR and decile data for a DCPP model over Australia."""
-    file_data = list(home.glob(f"data/growing-season-pr_{model}*_gn.nc"))[0]
-    data = xr.open_dataset(file_data).pr
-    # Apply shapefile mask of Australia
-    data = data.sel(lat=slice(-50, -10), lon=slice(105, 155))
-    gdf = gp.read_file(home / "shapefiles/australia.shp")
-    try:
-        data = select_shapefile_regions(data, gdf, overlap_fraction=0.01)
-    except AssertionError:
-        data = select_shapefile_regions(data, gdf)
-    for dim in ["lat", "lon"]:
-        data = data.dropna(dim, how="all")
-
-    decile = get_deciles(
-        data, core_dim=["lead_time"], decile_dims=["init_date", "ensemble", "lead_time"]
-    )
-
-    return data, decile
-
-
-def get_events_au(data, decile, event, model, time_dim="time"):
+def get_events_au(data, decile, event, model, time="time"):
     """Get GSR event property dataset for all grid points."""
 
     def convert_time(time_start, time_end):
@@ -553,18 +404,17 @@ def get_events_au(data, decile, event, model, time_dim="time"):
             time_start = pd.NaT
         return time_start, time_end
 
-    file_events = (
-        home / f"data/{event.event_type}_{event.min_duration}yr_events_aus_{model}.nc"
-    )
+    file_events = home / f"data/{event.type}_{event.n}yr_events_aus_{model}.nc"
 
     if file_events.exists():
         ds = xr.open_dataset(file_events)
+        ds = ds.sel(lat=slice(-52, -23))
 
     else:
         _, ds = gsr_events(
             data,
             decile,
-            time_dim=time_dim,
+            time=time,
             threshold=event.threshold,
             min_duration=event.min_duration,
             fixed_duration=event.fixed_duration,
@@ -614,22 +464,55 @@ def event_inds(m, min_duration):
     return inds
 
 
+def event_next_values(m, da, min_duration):
+    """Find indexes of min_duration events and bin the next year values."""
+    inds = event_inds(m, min_duration)
+
+    # Indexes of following years that meet criteria
+    inds_next = np.array(list(inds)) + min_duration
+    # Drop indexes that are out of bounds
+    inds_next = inds_next[inds_next < len(m)]
+    k = np.zeros(da.size) * np.nan
+    # Return zeros if there are no events
+    if inds_next.size == 0:
+        return k, 0
+
+    # Get the values of the following years
+    da_next = da[inds_next]
+
+    # Total number of next year values
+    total = da_next.size
+
+    # Assign the next year values to the correct indexes
+    k[: len(inds_next)] = da_next
+
+    return k, total
+
+
 def transition_probability(
-    decile, threshold, operator, min_duration, time_dim="time", binned=True
+    da,
+    threshold,
+    operator,
+    min_duration,
+    var="decile",
+    time="time",
+    binned=True,
 ):
-    """Calculate the probability of transitioning to another year of a low/high decile.
+    """Calculate the probability of transitioning to another year of a low/high decile/tercile.
 
     Parameters
     ----------
-    decile : xa.DataArray
-        Decile values
+    da : xa.DataArray
+        Deciles or terciles
     threshold : float
         Decile threshold
     operator : {"less", "greater"}
         Operator to apply a threshold
-    min_duration : int
+    min_duration : int or array-like
         Minimum duration of event
-    time_dim : str, optional
+    var : {"decile", "binned_decile", "tercile"}, optional
+        Variable to bin, by default "decile"
+    time : str, optional
         Name of the time dimension, by default "time"
     binned : bool, optional
         Bin the deciles into dry/medium/wet or 1-10, by default True
@@ -650,60 +533,134 @@ def transition_probability(
     - Note that this includes overlapping years (unlike gsr_events).
     - If the last year in the series meets the criteria, it is dropped from
     the total event count next year because the 'next year' is not known.
-    - Used for persistance_probability, transistion_probability and
-    transtion_matrix plots.
+    - Used for persistance_probability, transitions_probability and
+    transition_matrix plots.
     """
-    assert min_duration <= 3
-
-    def bin_decile_next(m, decile, min_duration, bins):
-        """Find indexes of min_duration events and bin the next year deciles."""
-        inds = event_inds(m, min_duration)
-
-        # Indexes of following years that meet criteria
-        inds_next = np.array(list(inds)) + min_duration
-        # Drop indexes that are out of bounds
-        inds_next = inds_next[inds_next < len(m)]
-
-        # Return zeros if there are no events
-        if inds_next.size == 0:
-            k = np.zeros(len(bins) - 1, dtype=int)
-            return k, 0
-
-        # Get the deciles of the following years
-        decile_next = decile[inds_next]
-
-        # Total number of next year deciles
-        total = decile_next.size
-
-        # Bin the next year deciles
-        k, _ = np.histogram(decile_next, bins=bins)
-        return k, total
+    assert np.all(min_duration <= 3)
 
     # Create decile threshold mask
     if operator == "less":
-        m = decile <= threshold
+        threshold = threshold if var != "tercile" else 1
+        m = da <= threshold
     else:
-        m = decile >= threshold
+        threshold = threshold if var != "tercile" else 3
+        m = da >= threshold
 
-    # Create bins for deciles (dry/medium/wet) or bin each decile
-    bins = np.array([1, 4, 8, 11]) if binned else np.arange(1, 12)
+    if isinstance(min_duration, int):
+        min_duration = np.array([min_duration])
+    if isinstance(min_duration, np.ndarray):
+        min_duration = xr.DataArray(min_duration, dims="n")
 
-    k, n = xr.apply_ufunc(
-        bin_decile_next,
+    da_next, n = xr.apply_ufunc(
+        event_next_values,
         m,
-        decile,
-        input_core_dims=[[time_dim], [time_dim]],
-        output_core_dims=[["q"], []],
+        da,
+        min_duration,
+        input_core_dims=[[time], [time], []],
+        output_core_dims=[[time], []],
         vectorize=True,
         dask="parallelized",
-        kwargs=dict(min_duration=min_duration, bins=bins),
-        output_dtypes=["int"] * len(bins),
+        output_dtypes=["float64"] * (da[time].size + 1),
+    )
+    if not binned:
+        return da_next, n
+
+    elif binned:
+        # Create bins for deciles (dry/medium/wet) or bin each decile/tercile
+        if var == "decile":
+            bins = np.arange(1, 12)
+        elif var == "binned_decile":
+            bins = np.array([1, 4, 8, 11])
+        elif var == "tercile":
+            bins = np.arange(1, 5)
+
+        k, _ = xr.apply_ufunc(
+            np.histogram,
+            da_next,
+            input_core_dims=[[time]],
+            output_core_dims=[["q"], ["b"]],
+            vectorize=True,
+            dask="parallelized",
+            kwargs=dict(bins=bins),
+            output_dtypes=["int"] * ((len(bins) * 2) - 1),
+        )
+        return k, n, bins
+
+
+def downsampled_transition_probability(
+    da, event, regions, target="AGCD", n_samples=1000, var="tercile"
+):
+    """Resample model transition probabilities to a target sample sizes."""
+    rng = np.random.default_rng(seed=42)
+    bins = np.arange(1, 5)
+    ds = xr.Dataset(coords={"x": regions, "n": np.arange(1, 4), "q": bins[:-1]})
+
+    if target == "AGCD":
+        # AGCD sample sizes for each region
+        dv_agcd = gsr_data_regions("AGCD", regions)
+        k_agcd, n_agcd, _ = transition_probability(
+            dv_agcd.tercile,
+            event.threshold,
+            event.operator,
+            np.arange(1, 4),
+            var=var,
+            time="time",
+            binned=True,
+        )
+        ds["total"] = n_agcd.T.astype(dtype=int)
+
+    elif isinstance(target, (np.integer, float)):
+        ds["total"] = xr.DataArray(
+            np.full((len(regions), 3), target, dtype=int), dims=("x", "n")
+        )
+    else:
+        ds["total"] = target
+
+    ds["k"] = xr.DataArray(
+        np.zeros((len(regions), 3, 3, n_samples)), dims=("x", "n", "q", "sample")
     )
 
-    return k, n, bins
+    # Get all of the next year terciles
+    dx_next, _ = transition_probability(
+        da,
+        event.threshold,
+        event.operator,
+        np.arange(1, 4),
+        var=var,
+        time="lead_time",
+        binned=False,
+    )
+    dx_next_stacked = dx_next.stack(dict(sample=["ensemble", "init_date", "lead_time"]))
+
+    for i in range(2):
+        for j in range(3):
+            # Drop NaNs
+            dx = dx_next_stacked.isel(n=j, x=i).dropna("sample", how="all")
+            # Draw random samples (n_samples of size agcd_sample_sizes)
+            dx_sampled = rng.choice(
+                dx, (ds.total.isel(n=j, x=i).item(), n_samples), replace=True
+            )
+            dx_sampled = xr.DataArray(dx_sampled, dims=("event", "sample"))
+
+            # Bin the terciles
+            ds["k"][dict(x=i, n=j)], _ = xr.apply_ufunc(
+                np.histogram,
+                dx_sampled,
+                input_core_dims=[["event"]],
+                output_core_dims=[["q"], ["b"]],
+                vectorize=True,
+                dask="parallelized",
+                kwargs=dict(bins=bins),
+                output_dtypes=["int"] * ((len(bins) * 2) - 1),
+            )
+
+    ds["p"] = (ds.k / ds.total) * 100
+    if target == "AGCD":
+        ds["k_agcd"] = k_agcd
+    return ds
 
 
-def transition_time(decile, min_duration, time_dim="time", transition_from="dry"):
+def transition_time(decile, min_duration, time="time", transition_from="dry"):
     """Count the transition times between n-year dry/wet events and next high/low decile year.
 
     Parameters
@@ -712,7 +669,7 @@ def transition_time(decile, min_duration, time_dim="time", transition_from="dry"
         Decile values
     min_duration : int
         Minimum duration of event
-    time_dim : str, optional
+    time : str, optional
         Name of the time dimension, by default "time"
     transition_from : {"dry", "wet"}, optional
         Transition from dry or wet events, by default "dry"
@@ -753,6 +710,7 @@ def transition_time(decile, min_duration, time_dim="time", transition_from="dry"
 
     # Bins for transition years
     max_years = 20  # Maximum duration (ensures consistent output size)
+
     # Note that years[0] is the first year after the dry/wet event
     bins = np.arange(max_years + 1, dtype=int)
 
@@ -760,7 +718,7 @@ def transition_time(decile, min_duration, time_dim="time", transition_from="dry"
         transition_years,
         m0,
         m1,
-        input_core_dims=[[time_dim], [time_dim]],
+        input_core_dims=[[time], [time]],
         output_core_dims=[["years"]],
         vectorize=True,
         # dask="parallelized",
@@ -769,70 +727,3 @@ def transition_time(decile, min_duration, time_dim="time", transition_from="dry"
     )
 
     return k, bins
-
-
-def binom_ci(n, p=0.3):
-    """Apply binomial test to calculate p-values."""
-    ci0, ci1 = xr.apply_ufunc(
-        scipy.stats.binom.interval,
-        0.95,
-        n,
-        # p,
-        input_core_dims=[[], []],
-        output_core_dims=[[], []],
-        vectorize=True,
-        dask="parallelized",
-        kwargs=dict(p=p),
-        output_dtypes=["float64", "float64"],
-    )
-    return ci0, ci1
-
-
-def apply_binomtest(k, n, p=0.3, alternative="two-sided"):
-    """Apply binomial test to calculate p-values (unused - delete?)."""
-
-    def bionomtest_pvalue(k, n, **kwargs):
-        if n > 0:
-            pvalue = scipy.stats.binomtest(k, n, **kwargs).pvalue
-        else:
-            pvalue = np.nan
-        return pvalue
-
-    p = xr.apply_ufunc(
-        bionomtest_pvalue,
-        k,
-        n,
-        input_core_dims=[[], []],
-        output_core_dims=[[]],
-        vectorize=True,
-        dask="parallelized",
-        kwargs=dict(p=p, alternative=alternative),
-        output_dtypes=["float64"],
-    )
-    return p
-
-
-def plot_binom(n=35):
-    """Simple plot of confidence intervals from the binomial test (delete?)."""
-    x = np.arange(n)
-    tail = ["greater", "less", "two-sided"]
-    pvalues = []
-    for alternative in tail:
-        pvalues.append(
-            [scipy.stats.binomtest(i, n, 0.3, alternative).pvalue for i in x]
-        )
-    interval = list(scipy.stats.binom.interval(0.95, n, p=0.3))
-
-    plt.figure(figsize=(8, 5))
-    plt.title("Bionomtest for n={} (95% CI: {:.0f}-{:.0f})".format(n, *interval))
-    for p, c, label in zip(pvalues, ["b", "r", "g"], tail):
-        plt.plot(x, p, c=c, label=label)
-
-    for i in range(2):
-        plt.axhline([0.05, 0.95][i], c="k")
-        plt.axvline(interval[i], c="k")
-
-    plt.margins(x=0, y=1e-2)
-    plt.ylabel("p-value")
-    plt.xlabel("Number of successes (k)")
-    plt.legend(title="Alternative")
