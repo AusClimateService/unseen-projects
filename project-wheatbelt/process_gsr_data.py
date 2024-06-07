@@ -10,6 +10,8 @@ from unseen.spatial_selection import select_shapefile_regions
 
 # The parent directory data and figures subdirs on your system
 home = Path("/g/data/xv83/unseen-projects/outputs/wheatbelt")
+# ! Delete before commit
+home = Path("/Users/ste785/projects/unseen-projects/outputs/wheatbelt")
 
 # Names of datasets (AGCD and DCPP models)
 names = [

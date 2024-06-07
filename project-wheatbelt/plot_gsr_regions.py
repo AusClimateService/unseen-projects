@@ -90,6 +90,7 @@ def plot_duration_histogram_downsampled(model, models, event, time, n_samples=10
     n_agcd = dv[0].time.size
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle(model)
     for i, ax in enumerate(axes):
         ax.set_title(f"{regions[i]} region consecutive {event.alt_name} years")
         # AGCD histogram
@@ -151,13 +152,16 @@ def plot_duration_histogram_downsampled(model, models, event, time, n_samples=10
         lgd = ax.legend(loc="upper right", fontsize=11)
 
     if model != "all":
-        fig.suptitle(
-            f"AGCD ({n_agcd} years) and {model} ({n_samples} samples of {target}x{dv[1][time].size} years)"
+        n_lead = dv[1][time].size
+        st = fig.suptitle(
+            f"{model} ({n_samples} samples of {target}x{n_lead}={target * n_lead} years)"
         )
+    else:
+        st = None
     plt.tight_layout()
     plt.savefig(
         home / f"figures/{event.type[:4]}_duration_histogram_xsamples_{model}.png",
-        bbox_extra_artists=(lgd,),
+        bbox_extra_artists=(lgd, st),
         bbox_inches="tight",
         dpi=200,
     )
@@ -304,6 +308,7 @@ def plot_transition_histogram_downsampled(tercile, model, event, n_samples=1000)
 
     dims = [d for d in ds.k.dims if d not in ["n", "x", "sample", "q"]]
     ds = ds.sum(dims)
+    x = np.arange(len(bins) - 1)
 
     _, ax = plt.subplots(2, 3, figsize=(12, 7))
     plt.suptitle(
@@ -320,10 +325,8 @@ def plot_transition_histogram_downsampled(tercile, model, event, n_samples=1000)
             )
 
             # Model boxplot
-            ax[i, j].boxplot(
-                (dx.k.T / dx.total) * 100, whis=[5, 95], positions=[0.5, 1.5, 2.5]
-            )
-            ax[i, j].set_xticks([0.5, 1.5, 2.5])
+            ax[i, j].boxplot((dx.k.T / dx.total) * 100, whis=[5, 95], positions=x + 0.5)
+            ax[i, j].set_xticks(x + 0.5)
             ax[i, j].set_xticklabels(["Dry", "Medium", "Wet"])
             ax[i, j].set_ylim(0, 105)
 
@@ -349,6 +352,7 @@ def plot_transition_histogram_downsampled_all_models(event, n_samples=1000):
     ds["total"] = ds.total.isel(model=0, drop=True)
 
     bins = np.arange(1, 5)
+    x = np.arange(len(bins) - 1)
 
     dims = [d for d in ds.k.dims if d not in ["n", "x", "sample", "q", "model"]]
     ds = ds.sum(dims)
@@ -371,20 +375,20 @@ def plot_transition_histogram_downsampled_all_models(event, n_samples=1000):
 
             # Model boxplot
             for m in range(len(models)):
-
                 ax[i, j].boxplot(
-                    dx.k.isel(model=m).T,
+                    (dx.k.isel(model=m).T / dx.isel(model=m).total) * 100,
                     whis=[5, 95],
-                    positions=np.arange(1, 4) + (m + 0.6) / 10,
+                    positions=x + (m + 1) / 10,
                     widths=0.03,
                     sym=".",
                     boxprops=dict(lw=0.4),
                     whiskerprops=dict(color=colors[m]),
                     flierprops=dict(ms=2, markeredgecolor=colors[m]),
                 )
-            ax[i, j].set_xticks([1.5, 2.5, 3.5])
+            ax[i, j].set_xticks(x + 0.5)
             ax[i, j].set_xticklabels(["Dry", "Medium", "Wet"])
-            ax[i, j].set_xlim(1, 4)
+            ax[i, j].set_xlim(0, 3)
+            ax[i, j].set_ylim(-1, 105)
     lines = [
         mpl.lines.Line2D([0], [0], label=m, color=c) for m, c in zip(models, colors)
     ]

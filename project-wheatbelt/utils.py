@@ -9,6 +9,8 @@ import numpy as np
 import scipy
 import xarray as xr
 
+from process_gsr_data import home, models
+
 
 def binom_ci(n, p=0.3):
     """Apply binomial test to determine confidence intervals."""
@@ -109,10 +111,6 @@ def plot_aus_map(
 def combine_figures(files, axes, axis=False):
     """Combine plotted figures of single models into a image."""
     files = sorted(files)
-    # Drop files from combined.
-    for kw in ["MRI-ESM2-0", "-combined", "_all"]:
-        files = [f for f in files if kw not in str(f)]
-
     outfile = str(files[-1]).replace("_NorCPM1", "-combined")
 
     for i, ax in enumerate(axes.flatten()):
@@ -135,14 +133,14 @@ def combine_figures(files, axes, axis=False):
     plt.show()
 
 
-def combine_all_figures(home):
+def combine_all_figures():
     """Combine all plotted figures of single models into a image."""
-    dir = home / "figures"
+    path = home / "figures"
 
     for s in ["LGSR_", "HGSR_"]:
         # Combine as 4x3 grid
         for f in ["transition_duration_histogram_*.png"]:
-            files = list(dir.glob(s + f))
+            files = [f"{path}/{s}{f}".replace("*", str(m)) for m in ["AGCD", *models]]
             _, axes = plt.subplots(3, 4, figsize=[12, 7], layout="compressed")
             combine_figures(files, axes, axis=True)
 
@@ -152,7 +150,7 @@ def combine_all_figures(home):
             "transition_histogram_xsamples_*.png",
             "transition_sample_size_*.png",
         ]:
-            files = list(dir.glob(s + f))
+            files = [f"{path}/{s}{f}".replace("*", str(m)) for m in models]
             _, axes = plt.subplots(3, 3, figsize=[12, 10], layout="compressed")
             combine_figures(files, axes, axis=True)
 
@@ -171,11 +169,11 @@ def combine_all_figures(home):
             "transition_matrix_*.png",
             "transition_pie_*.png",
         ]:
-            files = list(dir.glob(s + f))
+            files = [f"{path}/{s}{f}".replace("*", str(m)) for m in ["AGCD", *models]]
             _, axes = plt.subplots(5, 2, figsize=[8, 6], layout="compressed")
             combine_figures(files, axes, axis=True)
 
-        # Combine as 2x5 grid (no suplot grid)
+        # Combine as 2x5 grid (no subplot grid)
         for f in [
             "map_count_2yr_*.png",
             "map_count_3yr_*.png",
@@ -183,6 +181,6 @@ def combine_all_figures(home):
             "map_frequency_3yr_*.png",
             "map_persistance_probability_*.png",
         ]:
-            files = list(dir.glob(s + f))
+            files = [f"{path}/{s}{f}".replace("*", str(m)) for m in ["AGCD", *models]]
             _, axes = plt.subplots(5, 2, figsize=[8, 6], layout="compressed")
             combine_figures(files, axes, axis=False)

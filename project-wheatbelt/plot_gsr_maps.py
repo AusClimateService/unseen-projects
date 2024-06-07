@@ -66,7 +66,7 @@ def plot_event_count(ds, data, model, event, n_times):
     ax.text(
         0.04,
         0.08,
-        f"total years={n_times}",
+        f"Total years={n_times}",
         bbox=dict(fc="white", alpha=0.5),
         ha="left",
         va="bottom",
@@ -110,7 +110,7 @@ def plot_frequency(ds, model, event, n_times):
     ax.text(
         0.04,
         0.08,
-        f"total years={n_times}",
+        f"Total years={n_times}",
         bbox=dict(fc="white", alpha=0.5),
         ha="left",
         va="bottom",

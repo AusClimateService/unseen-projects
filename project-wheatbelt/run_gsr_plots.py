@@ -113,8 +113,8 @@ for model in names:
 
 for event in [Events(operator="less"), Events(operator="greater")]:
     plot_gsr_regions.plot_transition_histogram_downsampled_all_models(event, n_samples)
-    plot_gsr_regions.plot_downsampled_duration_histogram(
+    plot_gsr_regions.plot_duration_histogram_downsampled(
         "all", models, event, n_samples
     )
 
-combine_all_figures(home)
+combine_all_figures()
