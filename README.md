@@ -1,10 +1,10 @@
 # unseen-projects
 
-Code for running generic UNSEEN analysis.
+Code for running generic UNSEEN analysis workflows.
 
 Individual UNSEEN project work can be found in the `project-*/` subdirectories.
 
-## Usage
+## Standard usage
 
 Step 1: Create a `project-{name}/` directory for your project.
 
@@ -26,3 +26,17 @@ Once the minimum lead time is identified, the remainder of the analysis can be p
 ```bash
 make metric-forecast-analysis MODEL=CanESM5 MIN_LEAD=0 PROJECT_DETAILS=project-jasper/jasper_config.mk MODEL_DETAILS=dataset_makefiles/CanESM5_dcppA-hindcast_config.mk OBS_DETAILS=dataset_makefiles/AGCD-precip_config.mk
 ```
+
+## Custom usage
+
+To run the software in the UNSEEN package without using the standard `Makefile`,
+run the following commands at the command line to activate a virtual environment
+that has the UNSEEN package and all its dependencies installed.
+
+```
+module use /g/data/hh5/public/modules
+module load conda/analysis3
+source /g/data/xv83/unseen-projects/unseen_venv/bin/activate
+```
+
+(Run `deactivate` to exit the virtual environment.)
