@@ -24,13 +24,13 @@ MOMENTS_RAW_PLOT=${PROJECT_DIR}/figures/moments-test_${METRIC}_${MODEL}-${EXPERI
 NINO_FCST=${PROJECT_DIR}/data/nino34-anomaly_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_base-${BASE_PERIOD_TEXT}.nc
 NINO_OBS=${PROJECT_DIR}/data/nino34-anomaly_HadISST_1870-2022_base-1981-2010.nc
 
-FILEIO=/g/data/xv83/dbi599/miniconda3/envs/unseen-processing/bin/fileio
-PAPERMILL=/g/data/xv83/dbi599/miniconda3/envs/unseen2/bin/papermill
-INDEPENDENCE=/g/data/xv83/dbi599/miniconda3/envs/unseen2/bin/independence
-STABILITY=/g/data/xv83/dbi599/miniconda3/envs/unseen2/bin/stability
-BIAS_CORRECTION=/g/data/xv83/dbi599/miniconda3/envs/unseen-processing/bin/bias_correction
-SIMILARITY=/g/data/xv83/dbi599/miniconda3/envs/unseen-processing/bin/similarity
-MOMENTS=/g/data/xv83/dbi599/miniconda3/envs/unseen2/bin/moments
+FILEIO=/g/data/xv83/unseen-projects/unseen_venv/bin/fileio
+PAPERMILL=/g/data/xv83/unseen-projects/unseen_venv/bin/papermill
+INDEPENDENCE=/g/data/xv83/unseen-projects/unseen_venv/bin/independence
+STABILITY=/g/data/xv83/unseen-projects/unseen_venv/bin/stability
+BIAS_CORRECTION=/g/data/xv83/unseen-projects/unseen_venv/bin/bias_correction
+SIMILARITY=/g/data/xv83/unseen-projects/unseen_venv/bin/similarity
+MOMENTS=/g/data/xv83/unseen-projects/unseen_venv/bin/moments
 
 ## metric-obs : calculate the metric in observations
 metric-obs : ${METRIC_OBS}

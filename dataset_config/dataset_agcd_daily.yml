@@ -1,5 +1,7 @@
 rename:
   precip: pr
+  tmax: tasmax
 
 units:
-  pr: mm day-1   
+  pr: mm day-1
+  tasmax: degC
