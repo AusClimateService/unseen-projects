@@ -645,11 +645,16 @@ def plot_transition_sample_size(tercile, model, event, n_samples=10000):
     plt.show()
 
 
-def plot_timeseries_AGCD(dv, event):
+def plot_timeseries_AGCD(dv, event, var="decile"):
     """Plot the AGCD (rainfall & decile) timeseries with GSR events shaded."""
+    if var == "tercile":
+        if event.threshold == 3:
+            event.threshold = 1
+        elif event.threshold == 8:
+            event.threshold = 3
     events, _ = gsr_events(
         dv.pr,
-        dv.decile,
+        dv[var],
         threshold=event.threshold,
         min_duration=event.n,
         operator=event.operator,
@@ -658,9 +663,15 @@ def plot_timeseries_AGCD(dv, event):
         time="time",
     )
     # Plot GSR rainfall or GSR decile
-    for da, ylabel, fname in zip(
-        [dv.pr, dv.decile], ["Rainfall [mm]", "GSR decile"], ["", "_decile"]
-    ):
+    fnames = [f"_{var}", ""]
+    da_list = [dv[var], dv.pr]
+    ylabels = [f"GSR {var}", "Rainfall [mm]"]
+
+    if var == "tercile":
+        # Don't plot pr with tercile events shaded
+        da_list = da_list[:1]
+
+    for k, da in enumerate(da_list):
         _, axes = plt.subplots(2, 1, figsize=(10, 5))
         for i, state in enumerate(["Western Australia", "South Australia"]):
             axes[i].set_title(
@@ -669,12 +680,10 @@ def plot_timeseries_AGCD(dv, event):
 
         for j, ax in enumerate(axes):
             # Plot timeseries as bars
-            ax.bar(
-                dv.pr.time.dt.year, da.isel(x=j), color="blue", label="Rainfall Data"
-            )
+            ax.bar(dv.pr.time.dt.year, da.isel(x=j), color="blue")
 
             # Plot the decile threshold (if plotting deciles)
-            if da.max() == 10:
+            if da.max() <= 10:
                 ax.axhline(event.threshold, c="k", lw=0.5)
 
             # Shade the GSR periods
@@ -682,14 +691,14 @@ def plot_timeseries_AGCD(dv, event):
                 t = da.time.dt.year[events.isel(x=j) == i]
                 ax.axvspan(t[0] - 0.33, t[-1] + 0.3, color="red", alpha=0.3)
 
-            ax.set_ylabel(ylabel)
+            ax.set_ylabel(ylabels[k])
             ax.set_xmargin(0)
             ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator())
 
         plt.tight_layout()
         plt.savefig(
             home
-            / f"figures/timeseries_{event.type[:4]}_AGCD{event.type[4:]}_{event.n}yr{fname}.png",
+            / f"figures/timeseries_{event.type[:4]}_AGCD{event.type[4:]}_{event.n}yr{fnames[k]}.png",
             dpi=200,
         )
         plt.show()

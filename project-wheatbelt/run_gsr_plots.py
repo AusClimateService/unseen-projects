@@ -47,7 +47,10 @@ for model in names:
             )
         else:
             for ev in [event_max, *events]:
-                plot_gsr_regions.plot_timeseries_AGCD(dv, ev)
+                plot_gsr_regions.plot_timeseries_AGCD(dv, ev, var="decile")
+                if event.minimize == 1:
+                    # Minimize same as "first" for terciles
+                    plot_gsr_regions.plot_timeseries_AGCD(dv, ev, var="tercile")
 
         plot_gsr_regions.plot_duration_histogram(dv, event_max, model, time)
         plot_gsr_regions.plot_transition_histogram(
