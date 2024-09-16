@@ -1,0 +1,7 @@
+# DCPP daily required metadata changes
+
+drop_coords:
+  - height
+
+round_coords:
+  - lat
