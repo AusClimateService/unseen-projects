@@ -64,3 +64,36 @@
 2024-08-14 17:18 MRI-ESM2-0      tasmax realm=atmos freq=day grid=gn members=10/10 years=1960-2019 (all=1960-2019) files/year= 10
 2024-08-14 17:18 NorCPM1         tasmax realm=atmos freq=day grid=gn members=20/20 years=1960-2018 (all=1960-2018) files/year= 20
 2024-08-14 17:18 
+2024-09-17 13:59 BCC-CSM2-MR     pr     realm=atmos freq=day grid=gn members= 8/8  years=1961-2014 (all=1961-2014) files/year=  8
+2024-09-17 13:59 CMCC-CM2-SR5    pr     realm=atmos freq=day grid=gn members=10/10 years=1960-2019 (all=1960-2019) files/year= 10
+2024-09-17 13:59 CanESM5         pr     realm=atmos freq=day grid=gn members=20/20 years=1960-2016 (all=1960-2016) files/year= 20
+2024-09-17 13:59 EC-Earth3       pr     realm=atmos freq=day grid=gr members=15/16 years=1960-2017 (all=1960-2018) files/year=165
+2024-09-17 13:59 HadGEM3-GC31-MM pr     realm=atmos freq=day grid=gn members=10/10 years=1960-2018 (all=1960-2018) files/year=120
+2024-09-17 13:59 IPSL-CM6A-LR    pr     realm=atmos freq=day grid=gr members=10/10 years=1960-2016 (all=1960-2016) files/year= 10
+2024-09-17 13:59 MIROC6          pr     realm=atmos freq=day grid=gn members=10/10 years=1960-2018 (all=1960-2018) files/year= 20
+2024-09-17 13:59 MPI-ESM1-2-HR   pr     realm=atmos freq=day grid=gn members=10/10 years=1960-2018 (all=1960-2019) files/year= 10
+2024-09-17 13:59 MRI-ESM2-0      pr     realm=atmos freq=day grid=gn members=10/10 years=1960-2019 (all=1960-2019) files/year= 10
+2024-09-17 13:59 NorCPM1         pr     realm=atmos freq=day grid=gn members=20/20 years=1960-2018 (all=1960-2018) files/year= 20
+2024-09-17 13:59 
+2024-09-17 13:59 BCC-CSM2-MR     tos    realm=ocean freq=mon grid=gn members= 8/8  years=1961-2014 (all=1961-2014) files/year=  8
+2024-09-17 13:59 CMCC-CM2-SR5    tos    realm=ocean freq=mon grid=gn members=10/10 years=1960-2019 (all=1960-2019) files/year= 10
+2024-09-17 13:59 CanESM5         tos    realm=ocean freq=mon grid=gn members=20/40 years=1960-2016 (all=1960-2019) files/year= 20
+2024-09-17 13:59 EC-Earth3       tos    realm=ocean freq=mon grid=gn members=15/16 years=1960-2017 (all=1960-2019) files/year=165
+2024-09-17 13:59 HadGEM3-GC31-MM tos    realm=ocean freq=mon grid=gn members=10/10 years=1960-2018 (all=1960-2018) files/year=120
+2024-09-17 13:59 IPSL-CM6A-LR    tos    realm=ocean freq=mon grid=gn members=10/10 years=1960-2016 (all=1960-2016) files/year= 10
+2024-09-17 13:59 MIROC6          tos    realm=ocean freq=mon grid=gn members=10/10 years=1960-2018 (all=1960-2021) files/year= 10
+2024-09-17 13:59 MPI-ESM1-2-HR   tos    realm=ocean freq=mon grid=gn members= 5/5  years=1960-2018 (all=1960-2018) files/year=  5
+2024-09-17 13:59 MRI-ESM2-0      tos    realm=ocean freq=mon grid=gn members=10/10 years=1960-2019 (all=1960-2019) files/year= 10
+2024-09-17 13:59 NorCPM1         tos    realm=ocean freq=mon grid=gn members=20/20 years=1960-2018 (all=1960-2018) files/year= 20
+2024-09-17 13:59 
+2024-09-17 13:59 BCC-CSM2-MR     tasmax realm=atmos freq=day grid=gn members= 8/8  years=1961-2014 (all=1961-2014) files/year=  8
+2024-09-17 13:59 CMCC-CM2-SR5    tasmax realm=atmos freq=day grid=gn members=20/20 years=1960-2019 (all=1960-2019) files/year= 20
+2024-09-17 13:59 CanESM5         tasmax realm=atmos freq=day grid=gn members=20/20 years=1960-2016 (all=1960-2016) files/year= 20
+2024-09-17 13:59 EC-Earth3       tasmax realm=atmos freq=day grid=gr members=15/16 years=1960-2017 (all=1960-2019) files/year=165
+2024-09-17 14:00 HadGEM3-GC31-MM tasmax realm=atmos freq=day grid=gn members=10/10 years=1960-2018 (all=1960-2018) files/year=120
+2024-09-17 14:00 IPSL-CM6A-LR    tasmax realm=atmos freq=day grid=gr members=10/10 years=1960-2016 (all=1960-2016) files/year= 10
+2024-09-17 14:00 MIROC6          tasmax realm=atmos freq=day grid=gn members=10/10 years=1960-2018 (all=1960-2018) files/year= 20
+2024-09-17 14:00 MPI-ESM1-2-HR   tasmax realm=atmos freq=day grid=gn members=10/10 years=1960-2018 (all=1960-2019) files/year= 10
+2024-09-17 14:00 MRI-ESM2-0      tasmax realm=atmos freq=day grid=gn members=10/10 years=1960-2019 (all=1960-2019) files/year= 10
+2024-09-17 14:00 NorCPM1         tasmax realm=atmos freq=day grid=gn members=20/20 years=1960-2018 (all=1960-2018) files/year= 20
+2024-09-17 14:00 

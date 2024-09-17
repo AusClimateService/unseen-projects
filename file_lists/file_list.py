@@ -144,9 +144,9 @@ def create_file_lists(cmip6, var, exclude_years={}, exclude_members={}, **kwargs
         # Members available each year
         years = np.unique(df.year)
         # Ensemble members available for each year
-        m_year = np.array(
-            [np.unique([m[6:] for m in df.member_id if m[1:5] in y]) for y in years]
-        )
+        m_year = [
+            np.unique([m[6:] for m in df.member_id if m[1:5] in y]) for y in years
+        ]
         m_len_year = np.array([len(m) for m in m_year])
 
         # # Select years with same number of ensemble members as first year
@@ -226,13 +226,13 @@ if __name__ == "__main__":
     # CanESM5: exclude years 2017-2019 (to match pr available 1960-2016)
     # EC-Earth3: pr 2018 is left out because it does not have i2 files
     exclude_years = {
-        "pr": {"EC-Earth3": ["2018", "2019"]},
+        "pr": {"EC-Earth3": ["2018", "2019"], "MPI-ESM1-2-HR": ["2019"]},
         "tos": {
             "CanESM5": ["2017", "2018", "2019"],
             "EC-Earth3": ["2018"],
             "MIROC6": ["2019", "2020", "2021"],
         },
-        "tasmax": {"EC-Earth3": ["2018", "2019"]},
+        "tasmax": {"EC-Earth3": ["2018", "2019"], "MPI-ESM1-2-HR": ["2019"]},
     }
     create_file_lists(
         cmip6,
