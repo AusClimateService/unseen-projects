@@ -32,7 +32,7 @@ dcpp_models = np.array(
 )
 
 
-def get_logger(name="file_list_log", level=logging.INFO):
+def get_logger(name="dcpp_file_list_log", level=logging.INFO):
     """Initialise a logger that writes to a stream and file."""
     logging.basicConfig(level=level)
     logger = logging.getLogger(name)
@@ -207,7 +207,7 @@ def create_file_lists(cmip6, var, exclude_years={}, exclude_members={}, **kwargs
         assert n_time_files[0] == ensemble_size * np.unique(n_files)[0]
         # Log model ensemble size and number of files per year
         logger.info(
-            f"{model:<15s} {var:<6s} realm={realm} freq={frequency} grid={grid_label} members={ensemble_size:>2d}/{avail_members:<2d} years={years[0]}-{years[-1]} (all={avail_years}) files/year={n_time_files[0]:>3d}"
+            f"{model:<15s} {var:<6s} realm={realm} freq={frequency} grid={grid_label} members={ensemble_size:>2d}(/{avail_members:<2d}) years={years[0]}-{years[-1]} (all={avail_years}) n_time_files={n_time_files[0]:>3d}/{ensemble_size:>2d}={n_time_files[0] / ensemble_size:>2.0f}"
         )
     logger.info("")
 
@@ -234,22 +234,22 @@ if __name__ == "__main__":
         },
         "tasmax": {"EC-Earth3": ["2018", "2019"], "MPI-ESM1-2-HR": ["2019"]},
     }
-    create_file_lists(
-        cmip6,
-        var="pr",
-        frequency="day",
-        exclude_years=exclude_years["pr"],
-        exclude_members=exclude_members["pr"],
-    )
+    # create_file_lists(
+    #     cmip6,
+    #     var="pr",
+    #     frequency="day",
+    #     exclude_years=exclude_years["pr"],
+    #     exclude_members=exclude_members["pr"],
+    # )
 
-    create_file_lists(
-        cmip6,
-        var="tos",
-        exclude_years=exclude_years["tos"],
-        exclude_members=exclude_members["tos"],
-        frequency="mon",
-        realm="ocean",
-    )
+    # create_file_lists(
+    #     cmip6,
+    #     var="tos",
+    #     exclude_years=exclude_years["tos"],
+    #     exclude_members=exclude_members["tos"],
+    #     frequency="mon",
+    #     realm="ocean",
+    # )
     create_file_lists(
         cmip6,
         var="tasmax",
