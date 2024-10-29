@@ -19,4 +19,6 @@ METRIC_PLOT_UPPER_LIMIT=60
 
 ## Function options
 INDEPENDENCE_OPTIONS=--confidence_interval 0.99 --n_resamples 1000
-MIN_LEAD_OPTIONS=--min_lead_kwargs variables=min_lead shapefile=/g/data/xv83/unseen-projects/outputs/hazards/shapefiles/australia.shp shape_overlap=0.1 spatial_agg=median
+MIN_LEAD_OPTIONS=--min_lead_kwargs variables=min_lead shapefile=/g/data/xv83/unseen-projects/outputs/hazards/shapefiles/australia.shp shape_overlap=0.1 spatial_agg=median 
+GEV_STATIONARY_OPTIONS=--fitstart LMM --retry_fit --assert_good_fit --file_kwargs variables=tasmax shapefile=/g/data/xv83/unseen-projects/outputs/hazards/shapefiles/australia.shp shape_overlap=0.1
+GEV_NONSTATIONARY_OPTIONS=--covariate "time.year" --fitstart LMM --retry_fit --pick_best_model 'bic' --file_kwargs variables=tasmax shapefile=/g/data/xv83/unseen-projects/outputs/hazards/shapefiles/australia.shp shape_overlap=0.1

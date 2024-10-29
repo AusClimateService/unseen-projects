@@ -13,6 +13,8 @@ PAPERMILL=${ENV_DIR}/bin/papermill
 INDEPENDENCE=${ENV_DIR}/bin/independence
 BIAS_CORRECTION=${ENV_DIR}/bin/bias_correction
 SIMILARITY=${ENV_DIR}/bin/similarity
+EVA=${ENV_DIR}/bin/eva
+spatial_plots=/g/data/xv83/unseen-projects/code/project-hazards/spatial_plots.py # todo
 
 METRIC_OBS=${PROJECT_DIR}/data/${METRIC}_${OBS_DATASET}_${OBS_TIME_PERIOD}_${TIMESCALE}_${REGION}.nc
 METRIC_FCST=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
@@ -23,6 +25,12 @@ METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED=${PROJECT_DIR}/data/${METRIC}_${MODEL}
 SIMILARITY_ADDITIVE_BIAS=${PROJECT_DIR}/data/similarity-test_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
 SIMILARITY_MULTIPLICATIVE_BIAS=${PROJECT_DIR}/data/similarity-test_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
 SIMILARITY_RAW=${PROJECT_DIR}/data/similarity-test_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_${OBS_DATASET}.nc
+GEV_STATIONARY_RAW=${PROJECT_DIR}/data/gev_params_stationary_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
+GEV_STATIONARY_ADDITIVE_BIAS=${PROJECT_DIR}/data/gev_params_stationary_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
+GEV_STATIONARY_MULTIPLICATIVE_BIAS=${PROJECT_DIR}/data/gev_params_stationary_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
+GEV_NONSTATIONARY_RAW=${PROJECT_DIR}/data/gev_params_nonstationary_bic_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
+GEV_NONSTATIONARY_ADDITIVE_BIAS=${PROJECT_DIR}/data/gev_params_nonstationary_bic_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
+GEV_NONSTATIONARY_MULTIPLICATIVE_BIAS=${PROJECT_DIR}/data/gev_params_nonstationary_bic_${METRIC}_${MODEL}-${EXPERIMENT}_${BASE_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
 
 ## metric-obs : calculate the metric in observations
 metric-obs : ${METRIC_OBS}
@@ -77,7 +85,38 @@ similarity-test-raw : ${SIMILARITY_RAW}
 ${SIMILARITY_RAW} : ${METRIC_FCST} ${METRIC_OBS}
 	${SIMILARITY} $< $(word 2,$^) ${VAR} $@ --reference_time_period ${BASE_PERIOD} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
 
-## metric-f0000orecast-analysis : analysis of the metric from forecast data
+# todo: add options for AGCD gev_params
+gev-params-stationary-raw : ${GEV_STATIONARY_RAW}
+${GEV_STATIONARY_RAW} : ${METRIC_FCST}
+	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+gev-params-stationary-additive-bias : ${GEV_STATIONARY_ADDITIVE_BIAS}
+${GEV_STATIONARY_ADDITIVE_BIAS} : ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED}
+	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+gev-params-stationary-multiplicative-bias : ${GEV_STATIONARY_MULTIPLICATIVE_BIAS}
+${GEV_STATIONARY_MULTIPLICATIVE_BIAS} : ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED}
+	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+gev-params-nonstationary-raw : ${GEV_NONSTATIONARY_RAW}
+${GEV_NONSTATIONARY_RAW} : ${METRIC_FCST} ${METRIC_OBS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+gev-params-nonstationary-additive-bias : ${GEV_NONSTATIONARY_ADDITIVE_BIAS}
+${GEV_NONSTATIONARY_ADDITIVE_BIAS} : ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+gev-params-nonstationary-multiplicative-bias : ${GEV_NONSTATIONARY_MULTIPLICATIVE_BIAS}
+${GEV_NONSTATIONARY_MULTIPLICATIVE_BIAS} : ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+# Run all gev params
+gev-params : ${GEV_STATIONARY_RAW} ${GEV_STATIONARY_ADDITIVE_BIAS} ${GEV_NONSTATIONARY_RAW} ${GEV_NONSTATIONARY_ADDITIVE_BIAS} #${GEV_STATIONARY_MULTIPLICATIVE_BIAS} ${GEV_NONSTATIONARY_MULTIPLICATIVE_BIAS}
+
+# spatial-plots-raw : ${METRIC_FCST} ${METRIC_OBS} ${SIMILARITY_RAW} ${GEV_STATIONARY_RAW} ${GEV_NONSTATIONARY_RAW}
+# 	${spatial_plots} $< ${METRIC} ${VAR} ${MODEL} $@ --start_year 1961 --time_agg maximum --min_lead ${INDEPENDENCE_FILE} ${MIN_LEAD_OPTIONS}
+
+## metric-forecast-analysis : analysis of the metric from forecast data
 metric-forecast-analysis : analysis_${MODEL}.ipynb
 analysis_${MODEL}.ipynb : analysis.ipynb ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BIAS_CORRECTED} ${METRIC_FCST_MULTIPLICATIVE_BIAS_CORRECTED} ${SIMILARITY_ADDITIVE_BIAS} ${SIMILARITY_MULTIPLICATIVE_BIAS} ${SIMILARITY_RAW} ${INDEPENDENCE_PLOT}  ${FCST_DATA}
 	${PAPERMILL} -p metric ${METRIC} -p var ${VAR} -p metric_plot_label ${METRIC_PLOT_LABEL} -p metric_plot_upper_limit ${METRIC_PLOT_UPPER_LIMIT} -p obs_file $(word 2,$^) -p model_file $(word 3,$^) -p model_add_bc_file $(word 4,$^) -p model_mulc_bc_file $(word 5,$^) -p similarity_add_bc_file $(word 6,$^) -p similarity_mulc_bc_file $(word 7,$^) -p similarity_raw_file $(word 8,$^) -p independence_file $(word 9,$^)-p independence_plot $(word 9,$^) -p region_name ${REGION} -p shape_file ${SHAPEFILE} -p shape_overlap ${SHAPE_OVERLAP} -p file_list $(word 15,$^) $< $@
