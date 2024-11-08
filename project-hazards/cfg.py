@@ -59,7 +59,7 @@ func_dict = {
 hazard_dict = {
     "txx": dict(
         idx="txx",
-        index="TXx",
+        metric="TXx",
         var="tasmax",
         var_name="Temperature",
         units="°C",
@@ -86,8 +86,8 @@ class InfoSet:
     ----------
     name : str
         Dataset name
-    index : str
-        Hazard index
+    metric : str
+        Hazard metric
     file : Path
         Data file path
     obs_file : Path
@@ -99,8 +99,8 @@ class InfoSet:
     ----------
     name : str
         Dataset name
-    index : str
-        Hazard index
+    metric : str
+        Hazard metric
     file : Path
         Forecast file path
     filename : str
@@ -127,7 +127,7 @@ class InfoSet:
     def __init__(
         self,
         name,
-        index,
+        metric,
         file,
         obs_file,
         ds=None,
@@ -137,18 +137,18 @@ class InfoSet:
     ):
         """Initialise Dataset instance."""
         self.name = name
-        self.index = index
-        self.file = file
+        self.metric = metric
+        self.file = Path(file)
         self.filestem = self.file.stem
-        self.obs_file = obs_file
+        self.obs_file = Path(obs_file)
         self.bias_correction = bias_correction
-        self.fig_dir = f"{project_dir}/figures/{self.index}"
+        self.fig_dir = f"{project_dir}/figures/{self.metric}"
         self.masked = masked
         if self.masked:
             self.filestem += f"_masked"
 
         # Get variables from hazard_dict
-        for key, value in hazard_dict[index].items():
+        for key, value in hazard_dict[metric].items():
             setattr(self, key, value)
         self.cmap_anom.set_bad("lightgrey")
         self.cmap.set_bad("lightgrey")
@@ -161,7 +161,7 @@ class InfoSet:
         else:
             self.time_dim = "sample"
             self.long_name = f"{self.name} ensemble"
-            self.n_samples = ds[self.var].dropna("sample", how="any")["sample"].size
+            # self.n_samples = ds[self.var].dropna("sample", how="any")["sample"].size
             if self.bias_correction:
                 self.long_name += f" ({self.bias_correction} bias corrected)"
             # else:
@@ -194,7 +194,7 @@ def get_dataset(
     similarity_file=None,
     alpha=0.05,
 ):
-    """Get index model dataset.
+    """Get metric model dataset.
 
     Parameters
     ----------

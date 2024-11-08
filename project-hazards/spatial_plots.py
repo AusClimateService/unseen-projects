@@ -3,6 +3,7 @@
 
 import argparse
 import calendar
+from re import M
 import geopandas as gp
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -18,10 +19,10 @@ from unseen import (
     similarity,
 )
 from acs_plotting_maps import plot_acs_hazard, cmap_dict, tick_dict
+
 from cfg import (
     InfoSet,
     get_dataset,
-    mask_not_australia,
     func_dict,
     date_range_str,
 )
@@ -41,7 +42,7 @@ plot_kwargs = dict(
 )
 
 
-def plot_map_time_agg(info, ds, time_agg="maximum"):
+def plot_map_time_agg(info, ds, time_agg="maximum", mask=None):
     """Plot map of time-aggregated data.
 
     Parameters
@@ -57,12 +58,14 @@ def plot_map_time_agg(info, ds, time_agg="maximum"):
     dims = [d for d in ds.dims if d not in ["lat", "lon"]]
     da = ds[info.var].reduce(func_dict[time_agg], dim=dims)
 
-    if info.masked:
-        da = da.where(ds.pval_mask)
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     fig, ax = plot_acs_hazard(
         data=da,
-        title=f"{time_agg.capitalize()} {info.index}",
+        title=f"{time_agg.capitalize()} {info.metric}",
         date_range=info.date_range,
         cmap=info.cmap,
         cbar_extend="both",
@@ -70,19 +73,22 @@ def plot_map_time_agg(info, ds, time_agg="maximum"):
         tick_labels=None,
         cbar_label=info.units_label,
         dataset_name=info.long_name,
-        outfile=f"{info.fig_dir}/{time_agg}_{info.filestem}.png",
+        stippling=mask,
+        outfile=f"{info.fig_dir}/{time_agg}_{filestem}.png",
         savefig=False,
         **plot_kwargs,
     )
     plt.savefig(
-        f"{info.fig_dir}/{time_agg}_{info.filestem}.png",
+        f"{info.fig_dir}/{time_agg}_{filestem}.png",
         dpi=300,
         bbox_inches="tight",
         facecolor="white",
     )
 
 
-def plot_map_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", n_samples=1000):
+def plot_map_time_agg_subsampled(
+    info, ds, ds_obs, time_agg="maximum", n_samples=1000, mask=None
+):
     """Plot map of time-aggregated data.
 
     Parameters
@@ -99,10 +105,14 @@ def plot_map_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", n_samples
     n_obs_samples = ds_obs[info.var].time.size
 
     # Drop model data after last obs year
-    da = ds[info.var].where(ds.time.dt.year <= ds_obs.time.dt.year.max(), drop=True)
+    da = ds[info.var].where(
+        (ds.time.dt.year <= ds_obs.time.dt.year.max()).load(), drop=True
+    )
 
-    if info.masked:
-        da = da.where(ds.pval_mask)
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     dims = [da[d].size for d in da.dims if d not in [info.time_dim]]
     da_subsampled = np.empty((n_samples, n_obs_samples, *list(dims)))
@@ -129,7 +139,8 @@ def plot_map_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", n_samples
 
     fig, ax = plot_acs_hazard(
         data=da_subsampled_agg,
-        title=f"{info.index} subsampled {time_agg}\n(median of {n_samples} samples)",
+        stippling=mask,
+        title=f"{info.metric} subsampled {time_agg}\n(median of {n_samples} samples)",
         date_range=info.date_range,
         cmap=info.cmap,
         cbar_extend="neither",
@@ -137,7 +148,7 @@ def plot_map_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", n_samples
         tick_labels=None,
         cbar_label=info.units_label,
         dataset_name=f"{info.name} ensemble ({n_samples} x max({n_obs_samples} subsample))",
-        outfile=f"{info.fig_dir}/{time_agg}_subsampled_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/{time_agg}_subsampled_{filestem}.png",
         **plot_kwargs,
     )
 
@@ -150,6 +161,7 @@ def plot_map_obs_anom(
     metric="anom",
     dparams_ns=None,
     covariate=None,
+    mask=None,
 ):
     """Plot map of soft-record metric (e.g., anomaly) between model and obs.
 
@@ -157,9 +169,9 @@ def plot_map_obs_anom(
     ----------
     info : Dataset
         Dataset information
-    ds : xr.Dataset
+    ds : xarray.Dataset
         Dataset containing the hazard variable
-    ds_obs : xr.Dataset
+    ds_obs : xarray.Dataset
         Dataset containing the observational hazard variable
     time_agg : {"mean", "median", "maximum", "minimum", "sum"}, default "maximum"
         Time aggregation function name
@@ -186,7 +198,7 @@ def plot_map_obs_anom(
         anom = da_agg - da_obs_agg_regrid
 
         kwargs = dict(
-            title=f"{time_agg.capitalize()} {info.index}\ndifference from observed",
+            title=f"{time_agg.capitalize()} {info.metric}\ndifference from observed",
             cbar_label=f"Anomaly [{info.units}]",
             cmap=info.cmap_anom,
             ticks=info.ticks_anom,
@@ -213,7 +225,7 @@ def plot_map_obs_anom(
             anom = rl / da_obs_agg_regrid
             kwargs["cbar_label"] = f"Ratio to observed {time_agg}"
             kwargs["title"] = (
-                f"Ratio of UNSEEN 2000-year {info.index}\nto the observed {time_agg}"
+                f"Ratio of UNSEEN 2000-year {info.metric}\nto the observed {time_agg}"
             )
             kwargs["ticks"] = np.arange(0.6, 1.45, 0.05)
         return anom, kwargs
@@ -221,22 +233,24 @@ def plot_map_obs_anom(
     anom, kwargs = soft_record_metric(
         info, ds[info.var], ds_obs[info.var], time_agg, metric, dparams_ns, covariate
     )
-
-    if info.masked:
-        anom = anom.where(ds.pval_mask)
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     fig, ax = plot_acs_hazard(
         data=anom,
+        stippling=mask,
         date_range=info.date_range_obs,
         tick_labels=None,
         dataset_name=f"{info.obs_name}, {info.long_name}",
-        outfile=f"{info.fig_dir}/{time_agg}_{metric}_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/{time_agg}_{metric}_{filestem}.png",
         **kwargs,
         **plot_kwargs,
     )
 
 
-def plot_map_event_month_mode(info, ds):
+def plot_map_event_month_mode(info, ds, mask=None):
     """Plot map of the most common month of hazard event.
 
     Parameters
@@ -252,13 +266,15 @@ def plot_map_event_month_mode(info, ds):
         coords=dict(lat=ds.lat, lon=ds.lon),
         dims=["lat", "lon"],
     )
-    if info.masked:
-        da = da.where(ds.pval_mask)
-
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
     # Map of most common month
     fig, ax = plot_acs_hazard(
         data=da,
-        title=f"{info.index} most common month",
+        stippling=mask,
+        title=f"{info.metric} most common month",
         date_range=info.date_range,
         cmap=plt.cm.gist_rainbow,
         cbar_extend="neither",
@@ -266,12 +282,12 @@ def plot_map_event_month_mode(info, ds):
         tick_labels=list(calendar.month_name)[1:],
         cbar_label="",
         dataset_name=info.long_name,
-        outfile=f"{info.fig_dir}/month_mode_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/month_mode_{filestem}.png",
         **plot_kwargs,
     )
 
 
-def plot_map_event_year(info, ds, time_agg="maximum"):
+def plot_map_event_year(info, ds, time_agg="maximum", mask=None):
     """Plot map of the year of the maximum or minimum event.
 
     Parameters
@@ -284,9 +300,6 @@ def plot_map_event_year(info, ds, time_agg="maximum"):
         Time aggregation function name
     """
 
-    cmap = cmap_dict["inferno"]
-    cmap.set_bad("lightgrey")
-
     dt = ds[info.var].copy().compute()
     dt.coords[info.time_dim] = dt.event_time.dt.year
 
@@ -294,26 +307,30 @@ def plot_map_event_year(info, ds, time_agg="maximum"):
         da = dt.idxmax(info.time_dim)
     elif time_agg == "minimum":
         da = dt.idxmin(info.time_dim)
-    if info.masked:
-        da = da.where(ds.pval_mask)
+
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     # Map of year of maximum
     fig, ax = plot_acs_hazard(
         data=da,
-        title=f"Year of {time_agg} {info.index}",
+        stippling=mask,
+        title=f"Year of {time_agg} {info.metric}",
         date_range=info.date_range,
-        cmap=cmap_dict,
+        cmap=cmap_dict["inferno"],
         cbar_extend="max",
         ticks=np.arange(1960, 2026, 5),  # todo: pass as argument?
         tick_labels=None,
         cbar_label="",
         dataset_name=info.long_name,
-        outfile=f"{info.fig_dir}/year_{time_agg}_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/year_{time_agg}_{filestem}.png",
         **plot_kwargs,
     )
 
 
-def plot_map_gev_param_trend(info, ds, dparams_ns, param="location"):
+def plot_map_gev_param_trend(info, ds, dparams_ns, param="location", mask=None):
     """Plot map of GEV location and scale parameter trends.
 
     Parameters
@@ -330,25 +347,27 @@ def plot_map_gev_param_trend(info, ds, dparams_ns, param="location"):
 
     var_name = {"location": "loc1", "scale": "scale1"}
     da = dparams_ns.sel(dparams=var_name[param])
-
-    if info.masked:
-        da = da.where(ds.pval_mask)
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     fig, ax = plot_acs_hazard(
         data=da,
-        title=f"{info.index} GEV distribution\n{param} parameter trend",
+        stippling=mask,
+        title=f"{info.metric} GEV distribution\n{param} parameter trend",
         date_range=info.date_range,
         cmap=info.cmap_anom,
         cbar_extend="both",
         ticks=info.ticks_param_trend[param],
         cbar_label=f"{param.capitalize()} parameter\n[{info.units} / year]",
         dataset_name=info.long_name,
-        outfile=f"{info.fig_dir}/gev_{param}_trend_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/gev_{param}_trend_{filestem}.png",
         **plot_kwargs,
     )
 
 
-def plot_map_aep(info, ds, dparams_ns, times, aep=1):
+def plot_map_aep(info, ds, dparams_ns, times, aep=1, mask=None):
     """Plot maps of AEP for a given threshold.
 
     Parameters
@@ -369,12 +388,16 @@ def plot_map_aep(info, ds, dparams_ns, times, aep=1):
     """
     ari = eva.aep_to_ari(aep)
     da_aep = eva.get_return_level(ari, dparams_ns, times)
-    if info.masked:
-        da_aep = da_aep.where(ds.pval_mask)
+    filestem = info.filestem
+
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
+
     for i, time in enumerate(times.values):
         fig, ax = plot_acs_hazard(
             data=da_aep.isel({info.time_dim: i}),
-            title=f"{info.index}\n{aep}% Annual Exceedance Probability",
+            title=f"{info.metric}\n{aep}% Annual Exceedance Probability",
             date_range=time,
             cmap=info.cmap,
             cbar_extend="both",
@@ -382,7 +405,7 @@ def plot_map_aep(info, ds, dparams_ns, times, aep=1):
             tick_labels=None,
             cbar_label=info.units_label,
             dataset_name=info.long_name,
-            outfile=f"{info.fig_dir}/aep_{aep:g}pct_{info.filestem}_{time}.png",
+            outfile=f"{info.fig_dir}/aep_{aep:g}pct_{filestem}_{time}.png",
             **plot_kwargs,
         )
 
@@ -392,7 +415,8 @@ def plot_map_aep(info, ds, dparams_ns, times, aep=1):
     )
     fig, ax = plot_acs_hazard(
         data=da,
-        title=f"Change in {info.index}\n{aep}% Annual Exceedance Probability",
+        stippling=mask,
+        title=f"Change in {info.metric}\n{aep}% Annual Exceedance Probability",
         date_range=f"Difference between {times[0].item()} and {times[1].item()}",
         cmap=info.cmap_anom,
         cbar_extend="both",
@@ -400,7 +424,7 @@ def plot_map_aep(info, ds, dparams_ns, times, aep=1):
         tick_labels=None,
         cbar_label=info.units_label,
         dataset_name=info.long_name,
-        outfile=f"{info.fig_dir}/aep_{aep:g}pct_{info.filestem}_{times[0].item()}-{times[1].item()}.png",
+        outfile=f"{info.fig_dir}/aep_{aep:g}pct_{filestem}_{times[0].item()}-{times[1].item()}.png",
         **plot_kwargs,
     )
 
@@ -412,6 +436,7 @@ def plot_map_obs_ari(
     dparams_ns,
     covariate,
     time_agg="maximum",
+    mask=None,
 ):
     """Spatial map of return periods corresponding to the max/min value in obs.
 
@@ -438,7 +463,7 @@ def plot_map_obs_ari(
         da_obs_agg_regrid = general_utils.regrid(da_obs_agg, da_agg)
         da_agg = da_obs_agg_regrid
         # Mask ocean (for compatibility with dparams_ns)
-        da_agg = mask_not_australia(da_agg, overlap_fraction=0.1)
+        # da_agg = mask_not_australia(da_agg, overlap_fraction=0.1)
         long_name = f"{info.obs_name}, {info.long_name}"
         cbar_label = (
             f"Model-estimated\nannual recurrence interval\nin {covariate} [years]"
@@ -458,29 +483,32 @@ def plot_map_obs_ari(
         dask="parallelized",
         output_dtypes=["float64"],
     )
-    if info.masked:
-        rp = rp.where(ds.pval_mask)
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     cmap = cmap_dict["inferno"]
     cmap.set_bad("lightgrey")
 
     fig, ax = plot_acs_hazard(
         data=rp,
-        title=f"Annual recurrence interval\nof observed {info.index} {time_agg}",
+        stippling=mask,
+        title=f"Annual recurrence interval\nof observed {info.metric} {time_agg}",
         date_range=info.date_range_obs,
         cmap=cmap,
         cbar_extend="max",
         norm=LogNorm(vmin=1, vmax=10000),
         cbar_label=cbar_label,
         dataset_name=long_name,
-        outfile=f"{info.fig_dir}/ari_obs_{time_agg}_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/ari_obs_{time_agg}_{filestem}.png",
         **plot_kwargs,
     )
     return
 
 
 def plot_map_new_record_probability(
-    info, ds, ds_obs, dparams_ns, covariate, time_agg, ari=10
+    info, ds, ds_obs, dparams_ns, covariate, time_agg, ari=10, mask=None
 ):
     """Plot map of the probability of breaking the obs record in the next X years.
 
@@ -519,8 +547,6 @@ def plot_map_new_record_probability(
     if info.name != info.obs_name:
         da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
         da = general_utils.regrid(da_obs_agg, da)
-        # Mask ocean (for compatibility with dparams)
-        da = mask_not_australia(da, overlap_fraction=0.1)
 
     probability = xr.apply_ufunc(
         new_record_probability,
@@ -536,12 +562,15 @@ def plot_map_new_record_probability(
         dask="parallelized",
         output_dtypes=["float64"] * 2,
     )
-    if info.masked:
-        probability = probability.where(ds.pval_mask)
+    filestem = info.filestem
+    if mask:
+        mask = ds.pval_mask
+        filestem += "_masked"
 
     fig, ax = plot_acs_hazard(
         data=probability,
-        title=f"Probability of\nrecord breaking {info.index}\nin the next {ari} years",
+        stippling=mask,
+        title=f"Probability of\nrecord breaking {info.metric}\nin the next {ari} years",
         # date_range=covariate,
         baseline=info.date_range,
         cmap=info.cmap_anom,
@@ -551,14 +580,14 @@ def plot_map_new_record_probability(
         dataset_name=(
             info.obs_name if info.is_obs() else f"{info.obs_name}, {info.long_name}"
         ),
-        outfile=f"{info.fig_dir}/new_record_probability_{ari}-year_{info.filestem}.png",
+        outfile=f"{info.fig_dir}/new_record_probability_{ari}-year_{filestem}.png",
         **plot_kwargs,
     )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("index", type=str, default="txx", help="Hazard index")
+    parser.add_argument("metric", type=str, default="txx", help="Hazard metric")
     parser.add_argument("dataset", type=str, help="Model name")
     parser.add_argument("--file", type=str, default="AGCD", help="Forecast data file")
     parser.add_argument("--obs_file", type=str, help="Observational data file")
@@ -591,11 +620,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # args = argparse.Namespace(
-    #     index="txx",
+    #     metric="txx",
     #     var="tasmax",
     #     dataset=datasets[9],
     #     bias_correction="additive",
-    #     masked=False,
+    #     mask=None,
     #     overlap_fraction=0.1,
     #     time_agg="maximum",
     #     start_year=1961,  # End of first year
@@ -605,33 +634,37 @@ if __name__ == "__main__":
     # )
 
     # Add filenames (todo: define in makefile)
-    home = Path("/g/data/xv83/unseen-projects/outputs/hazards")
-    obs_file = home / "data/txx_AGCD-CSIRO_r05_1901-2024_annual-jul-to-jun_aus.nc"
-    args.file = f"{args.index}_{args.dataset}*_aus.nc"
+    project_dir = Path("/g/data/xv83/unseen-projects/outputs/hazards")
+    obs_file = (
+        project_dir / "data/txx_AGCD-CSIRO_r05_1901-2024_annual-jul-to-jun_aus.nc"
+    )
+    args.file = f"{args.metric}_{args.dataset}*_aus.nc"
 
     if args.dataset != "AGCD" and args.bias_correction is not None:
         args.file = args.file[:-3] + f"*{args.bias_correction}.nc"
 
-    args.file = list(Path(f"{home}/data/").rglob(args.file))[0]
-    args.file_s = home / f"data/gev_params_stationary_{args.file.stem}.nc"
-    args.file_ns = home / f"data/gev_params_nonstationary_bic_{args.file.stem}.nc"
+    args.file = list(Path(f"{project_dir}/data/").rglob(args.file))[0]
+    args.file_s = project_dir / f"data/gev_params_stationary_{args.file.stem}.nc"
+    args.file_ns = (
+        project_dir / f"data/gev_params_nonstationary_bic_{args.file.stem}.nc"
+    )
     if args.dataset != "AGCD":
         # Minimum lead time file
         args.min_lead = list(
-            Path(f"{home}/data/").rglob(
-                f"independence-test_{args.index}_{args.dataset}*.nc"
+            Path(f"{project_dir}/data/").rglob(
+                f"independence-test_{args.metric}_{args.dataset}*.nc"
             )
         )[0]
         args.min_lead_kwargs = dict(
-            shapefile=f"{home}/shapefiles/australia.shp",
+            shapefile=f"{project_dir}/shapefiles/australia.shp",
             shape_overlap=0.1,
             spatial_agg="median",
         )
         # Similarity file
-        args.similarity_file = home / f"data/similarity-test_{args.file.stem}.nc"
+        args.similarity_file = project_dir / f"data/similarity-test_{args.file.stem}.nc"
         if args.bias_correction is None:
             args.similarity_file = list(
-                Path(f"{home}/data/").rglob(
+                Path(f"{project_dir}/data/").rglob(
                     f"similarity-test_{args.file.stem}*AGCD-CSIRO_r05.nc"
                 )
             )[0]
@@ -651,13 +684,13 @@ if __name__ == "__main__":
     # Load info
     info = InfoSet(
         args.dataset,
-        args.index,
+        args.metric,
         args.file,
         obs_file,
         ds=ds,
         bias_correction=args.bias_correction,
         masked=args.masked,
-        project_dir=home,
+        project_dir=project_dir,
     )
 
     if args.dataset != "AGCD":
@@ -681,15 +714,18 @@ if __name__ == "__main__":
 
     # Ensure data and dparams are on the same grid (lead-sea mask may crop dparams)
     ds = ds.sel(lat=dparams_ns.lat, lon=dparams_ns.lon)
-
+    if args.masked:
+        mask = ds.pval_mask
+    else:
+        mask = None
     # Plot maps
-    plot_map_event_month_mode(info, ds)
-    plot_map_event_year(info, ds, args.time_agg)
-    plot_map_time_agg(info, ds, "median")
-    plot_map_time_agg(info, ds, args.time_agg)
-    plot_map_gev_param_trend(info, ds, dparams_ns, param="location")
-    plot_map_gev_param_trend(info, ds, dparams_ns, param="scale")
-    plot_map_aep(info, ds, dparams_ns, times, aep=1)
+    plot_map_event_month_mode(info, ds, mask=mask)
+    plot_map_event_year(info, ds, args.time_agg, mask=mask)
+    plot_map_time_agg(info, ds, "median", mask=mask)
+    plot_map_time_agg(info, ds, args.time_agg, mask=mask)
+    plot_map_gev_param_trend(info, ds, dparams_ns, param="location", mask=mask)
+    plot_map_gev_param_trend(info, ds, dparams_ns, param="scale", mask=mask)
+    plot_map_aep(info, ds, dparams_ns, times, aep=1, mask=mask)
     plot_map_obs_ari(
         info,
         ds,
@@ -697,6 +733,7 @@ if __name__ == "__main__":
         dparams_ns,
         covariate=year,
         time_agg=args.time_agg,
+        mask=mask,
     )
 
     if not info.is_obs():
@@ -715,11 +752,13 @@ if __name__ == "__main__":
             outfile=f"{info.fig_dir}/{args.similarity_file.name[:-3]}.png",
         )
         # Model-specific plots
-        plot_map_time_agg_subsampled(info, ds, ds_obs, args.time_agg, n_samples=1000)
-        plot_map_obs_anom(info, ds, ds_obs, "median", "anom")
-        plot_map_obs_anom(info, ds, ds_obs, args.time_agg, "anom")
-        plot_map_obs_anom(info, ds, ds_obs, args.time_agg, "anom_std")
-        plot_map_obs_anom(info, ds, ds_obs, args.time_agg, "anom_pct")
+        plot_map_time_agg_subsampled(
+            info, ds, ds_obs, args.time_agg, n_samples=1000, mask=mask
+        )
+        plot_map_obs_anom(info, ds, ds_obs, "median", "anom", mask=mask)
+        plot_map_obs_anom(info, ds, ds_obs, args.time_agg, "anom", mask=mask)
+        plot_map_obs_anom(info, ds, ds_obs, args.time_agg, "anom_std", mask=mask)
+        plot_map_obs_anom(info, ds, ds_obs, args.time_agg, "anom_pct", mask=mask)
         plot_map_obs_anom(
             info,
             ds,
@@ -728,6 +767,7 @@ if __name__ == "__main__":
             "anom_2000yr",
             dparams_ns=dparams_ns,
             covariate=year,
+            mask=mask,
         )
         plot_map_new_record_probability(
             info,
@@ -737,4 +777,5 @@ if __name__ == "__main__":
             year,
             args.time_agg,
             ari=10,
+            mask=mask,
         )
