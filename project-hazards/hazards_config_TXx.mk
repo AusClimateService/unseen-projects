@@ -3,21 +3,11 @@
 ENV_DIR=/g/data/xv83/as3189/conda/envs/unseen
 PROJECT_DIR=/g/data/xv83/unseen-projects/outputs/hazards
 FIG_DIR=${PROJECT_DIR}/figures/txx
-## Notebook options
-METRIC_PLOT_LABEL='Temperature [°C]'
-METRIC_PLOT_UPPER_LIMIT=60
-BIAS_CORRECTION=additive
-SIMILARITY_TEST=ks
-TIME_AGG=maximum
-covariate_period=1960-2020 # todo: define period for the covariate here?
-SHAPE_OVERLAP=0.1
-SHAPEFILE=/g/data/xv83/unseen-projects/outputs/hazards/shapefiles/australia.shp
-MIN_LEAD_SHAPE_SPATIAL_AGG=median
-TIME_FREQ=YE-JUN
 
 ## Metric calculation
 VAR=tasmax
 UNITS=degC
+TIME_FREQ=YE-JUN
 METRIC_OPTIONS_MODEL=--lat_bnds -46 -6 --lon_bnds 110 157 --output_chunks lead_time=50 --reset_times
 METRIC_OPTIONS=--variables ${VAR} --time_freq ${TIME_FREQ} --time_agg max --input_freq D --time_agg_min_tsteps 360 --time_agg_dates --units tasmax=${UNITS}
 
@@ -26,7 +16,21 @@ METRIC=txx
 REGION=aus
 TIMESCALE=annual-jul-to-jun
 
+## Notebook options
+SIMILARITY_TEST=ks
+GEV_MODEL_TEST=bic
+TIME_AGG=maximum
+# Non-stationary GEV covariate used for return levels
+GEV_COVARIATE_BASE=2025
+GEV_TREND_PERIOD='[1961, 2025]'
+SHAPE_OVERLAP=0.1
 
+SHAPEFILE=/g/data/xv83/unseen-projects/outputs/hazards/shapefiles/australia.shp
+MIN_LEAD_SHAPE_SPATIAL_AGG=median
+#  Plot additive/multiplicative bias corrected metric in spatial analysis notebook (True/False)
+PLOT_ADDITIVE_BC=1
+PLOT_MULTIPLICATIVE_BC=0
+PLOT_DICT = 'dict(metric="TXx", var="${VAR}", var_name="Temperature", units="°C", units_label="Temperature [°C]", freq="${TIME_FREQ}", obs_name="AGCD", cmap=cmap_dict["tasmax"], cmap_anom=cmap_dict["anom"], ticks=np.arange(22, 58 + 2, 2), ticks_anom=np.arange(-5, 5.5, 0.5), ticks_param_trend={"location": np.arange(-0.6, 0.61, 0.1), "scale": np.arange(-0.12, 0.122, 0.02)})'
 
 ## Independence test options
 INDEPENDENCE_OPTIONS=--confidence_interval 0.99 --n_resamples 1000
@@ -38,4 +42,3 @@ FITSTART=LMM
 GEV_BEST_MODEL_TEST=bic
 GEV_STATIONARY_OPTIONS=--fitstart ${FITSTART} --retry_fit --assert_good_fit --file_kwargs variables=tasmax shapefile=${SHAPEFILE} shape_overlap=0.1
 GEV_NONSTATIONARY_OPTIONS=--covariate "time.year" --fitstart ${FITSTART} --retry_fit --pick_best_model ${GEV_BEST_MODEL_TEST} --file_kwargs variables=tasmax shapefile=${SHAPEFILE} shape_overlap=${SHAPE_OVERLAP}
-
