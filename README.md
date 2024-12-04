@@ -23,8 +23,14 @@ make independence-test MODEL=CanESM5 PROJECT_DETAILS=project-jasper/jasper_confi
 ```
 
 Once the minimum lead time is identified, the remainder of the analysis can be processed:
+### Single location analysis
 ```bash
-make metric-forecast-analysis MODEL=CanESM5 MIN_LEAD=0 PROJECT_DETAILS=project-jasper/jasper_config.mk MODEL_DETAILS=dataset_makefiles/CanESM5_dcppA-hindcast_config.mk OBS_DETAILS=dataset_makefiles/AGCD-precip_config.mk
+make metric-forecast-analysis MODEL=CanESM5 PROJECT_DETAILS=project-jasper/jasper_config.mk MODEL_DETAILS=dataset_makefiles/CanESM5_dcppA-hindcast_config.mk OBS_DETAILS=dataset_makefiles/AGCD-precip_config.mk
+```
+
+### Spatial analysis
+```bash
+make metric-forecast-spatial-analysis MODEL=CanESM5 PROJECT_DETAILS=project-jasper/jasper_config.mk MODEL_DETAILS=dataset_makefiles/CanESM5_dcppA-hindcast_config.mk OBS_DETAILS=dataset_makefiles/AGCD-precip_config.mk
 ```
 
 ## Custom usage
