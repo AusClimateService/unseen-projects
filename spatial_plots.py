@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """UNSEEN analysis spatial maps of climate hazards in Australian."""
 
-import argparse
 import calendar
-import geopandas as gp
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
@@ -835,7 +833,7 @@ def plot_new_record_probability(
         data=probability,
         stippling=mask,
         title=f"Probability of record breaking\n{info.metric} in the next {ari} years",
-        date_range=f"covariate_base to {covariate_base + ari}",
+        date_range=f"{covariate_base} to {covariate_base + ari}",
         baseline=info.date_range,
         cmap=cmap_dict["ipcc_misc_seq_2"],
         cbar_extend="neither",
