@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-"""UNSEEN analysis spatial maps of climate hazards in Australian."""
+"""Australian Climate Service UNSEEN spatial maps.
+
+Notes
+-----
+* plot_acs_hazard functions must be modified to allow input colormap 
+normalisation and plot annotations shifted to compensate multi-line plot titles.
+"""
 
 import calendar
 import matplotlib.pyplot as plt
@@ -290,14 +296,14 @@ def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=100
         fig, ax = plot_acs_hazard(
             data=da_subsampled_agg,
             stippling=mask,
-            title=f"{info.metric} subsampled {time_agg}\n(median of {resamples} samples)",
+            title=f"{info.metric} {time_agg} in obs-sized subsample\n(median of {resamples} resamples)",
             date_range=info.date_range,
             cmap=info.cmap,
             cbar_extend="neither",
             ticks=info.ticks,
             tick_labels=None,
             cbar_label=info.units_label,
-            dataset_name=f"{info.name} ensemble ({resamples} x max({n_obs_samples} subsample))",
+            dataset_name=f"{info.name} ensemble ({resamples} x {time_agg}({n_obs_samples}-year subsample))",
             outfile=f"{info.fig_dir}/{time_agg}_subsampled_{info.filestem(mask)}.png",
             **plot_kwargs,
         )
@@ -681,7 +687,7 @@ def plot_obs_ari(
             f"Model-estimated\nannual recurrence interval\nin {covariate_base} [years]"
         )
     else:
-        da_obs_agg = ds[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
+        da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
         cbar_label = f"Annual recurrence\ninterval in {covariate_base} [years]"
 
     rp = xr.apply_ufunc(
