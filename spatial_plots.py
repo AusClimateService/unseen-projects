@@ -3,15 +3,17 @@
 
 Notes
 -----
-* plot_acs_hazard functions must be modified to allow input colormap 
+* plot_acs_hazard functions must be modified to allow input colormap
 normalisation and plot annotations shifted to compensate multi-line plot titles.
 """
 
 import calendar
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
 from pathlib import Path
+import re
 from scipy.stats import genextreme, mode
 import xarray as xr
 
@@ -52,6 +54,8 @@ class InfoSet:
         Metric/index variable (lowercase; modified by `kwargs`)
     file : Path
         Forecast file path
+    obs_name : str
+        Observational dataset name
     ds : xarray.Dataset, optional
         Model or observational dataset
     ds_obs : xarray.Dataset, optional
@@ -63,7 +67,7 @@ class InfoSet:
     date_dim : str
         Time dimension name for date range (e.g., "sample" or "time")
     kwargs : dict
-        Additional metric-specific attributes (idx, var, var_name, units, units_label, freq, obs_name, cmap, cmap_anom, ticks, ticks_anom, ticks_param_trend)
+        Additional metric-specific attributes (idx, var, var_name, units, units_label, freq, cmap, cmap_anom, ticks, ticks_anom, ticks_param_trend)
 
     Attributes
     ----------
@@ -104,16 +108,19 @@ class InfoSet:
         metric,
         file,
         ds=None,
+        obs_name=None,
         ds_obs=None,
         bias_correction=None,
         fig_dir=Path.home(),
         date_dim="time",
         **kwargs,
     ):
-        """Initialise Dataset instance."""
+        """Initialise class instance."""
+        super().__init__()
         self.name = name
         self.metric = metric
         self.file = Path(file)
+        self.obs_name = obs_name
         self.bias_correction = bias_correction
         self.fig_dir = Path(fig_dir)
 
@@ -128,6 +135,8 @@ class InfoSet:
             self.date_range = date_range_str(ds[date_dim], self.freq)
         if ds_obs is not None:
             self.date_range_obs = date_range_str(ds_obs.time, self.freq)
+            if ds is None:
+                self.date_range = self.date_range_obs
 
         if self.is_model():
             self.time_dim = "sample"
@@ -143,7 +152,7 @@ class InfoSet:
             self.long_name = f"{self.name}"
             self.long_name_with_obs = self.long_name
 
-    def filestem(self, mask=False):
+    def filestem(self, mask=None):
         """Return filestem with or without "_masked" suffix."""
         stem = self.file.stem
         if mask is not None:
@@ -157,6 +166,11 @@ class InfoSet:
     def __str__(self):
         """Return string representation of Dataset instance."""
         return f"{self.name}"
+
+    def __copy__(self):
+        obj = type(self).__new__(self.__class__)
+        obj.__dict__.update(self.__dict__)
+        return obj
 
     def __repr__(self):
         """Return string/dataset representation of Dataset instance."""
@@ -303,7 +317,7 @@ def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=100
             ticks=info.ticks,
             tick_labels=None,
             cbar_label=info.units_label,
-            dataset_name=f"{info.name} ensemble ({resamples} x {time_agg}({n_obs_samples}-year subsample))",
+            dataset_name=f"{info.long_name} ({resamples} x {time_agg}({n_obs_samples}-year subsample))",
             outfile=f"{info.fig_dir}/{time_agg}_subsampled_{info.filestem(mask)}.png",
             **plot_kwargs,
         )
@@ -446,42 +460,6 @@ def plot_event_month_mode(info, ds, mask=None):
     )
 
 
-# def plot_event_month_probability(info, ds, mask=None):
-#     """Plot map of the probability of event occurrence in each month.
-
-#     Parameters
-#     ----------
-#     info : Dataset
-#         Dataset information instance
-#     ds : xarray.Dataset
-#         Model or observational dataset
-#     mask : xarray.DataArray, default None
-#         Show model similarity stippling mask
-#     """
-#     # Calculate the probability of event occurrence in each month
-#     month_counts = ds.event_time.dt.month.groupby(ds.event_time.dt.month).count(
-#         dim=info.time_dim
-#     )
-#     total_counts = ds.event_time.size
-#     month_probabilities = month_counts / total_counts
-
-#     # Map of event occurrence probability
-#     fig, ax = plot_acs_hazard(
-#         data=month_probabilities,
-#         stippling=mask,
-#         title=f"{info.metric} event occurrence probability by month",
-#         date_range=info.date_range,
-#         cmap=plt.cm.gist_rainbow,
-#         cbar_extend="neither",
-#         ticks=np.arange(0.5, 12.5),
-#         tick_labels=list(calendar.month_name)[1:],
-#         cbar_label="Probability",
-#         dataset_name=info.long_name,
-#         outfile=f"{info.fig_dir}/month_probability_{info.filestem(mask)}.png",
-#         **plot_kwargs,
-#     )
-
-
 def plot_event_year(info, ds, time_agg="maximum", mask=None):
     """Plot map of the year of the maximum or minimum event.
 
@@ -586,7 +564,7 @@ def plot_aep(info, dparams_ns, times, aep=1, mask=None):
         fig, ax = plot_acs_hazard(
             data=da_aep.isel({info.time_dim: i}),
             stippling=mask,
-            title=f"{info.metric}\n{aep}% Annual Exceedance Probability",
+            title=f"{info.metric}\n{aep}% annual exceedance probability",
             date_range=time,
             cmap=info.cmap,
             cbar_extend="both",
@@ -605,11 +583,11 @@ def plot_aep(info, dparams_ns, times, aep=1, mask=None):
     fig, ax = plot_acs_hazard(
         data=da,
         stippling=mask,
-        title=f"Change in {info.metric}\n{aep}% Annual Exceedance Probability",
+        title=f"Change in {info.metric}\n{aep}% annual exceedance probability",
         date_range=f"Difference between {times[0].item()} and {times[1].item()}",
         cmap=info.cmap_anom,
         cbar_extend="both",
-        ticks=info.ticks_anom,  # todo: check scale reduced enough
+        ticks=info.ticks_anom,
         tick_labels=None,
         cbar_label=info.units_label,
         dataset_name=info.long_name,
@@ -638,6 +616,7 @@ def plot_aep_empirical(info, ds, aep=1, mask=None):
 
     fig, ax = plot_acs_hazard(
         data=da_aep,
+        stippling=mask,
         title=f"{info.metric} empirical {aep}%\nannual exceedance probability",
         date_range=info.date_range,
         cmap=info.cmap,
@@ -832,7 +811,7 @@ def plot_new_record_probability(
         ),
         vectorize=True,
         dask="parallelized",
-        output_dtypes=["float64"] * 2,
+        output_dtypes=["float64"],
     )
 
     fig, ax = plot_acs_hazard(
@@ -841,10 +820,10 @@ def plot_new_record_probability(
         title=f"Probability of record breaking\n{info.metric} in the next {ari} years",
         date_range=f"{covariate_base} to {covariate_base + ari}",
         baseline=info.date_range,
-        cmap=cmap_dict["ipcc_misc_seq_2"],
+        cmap=plt.cm.BuPu,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
-        cbar_label=f"Probability [%]",
+        cbar_label="Probability [%]",
         dataset_name=info.long_name_with_obs,
         outfile=f"{info.fig_dir}/new_record_probability_{ari}-year_{info.filestem(mask)}.png",
         **plot_kwargs,
@@ -870,38 +849,161 @@ def plot_new_record_probability_empirical(
         Return period in years
     mask : xarray.DataArray, default None
         Show model similarity stippling mask
-
     Notes
     -----
-    * empirical based probability - use last 10 years of model data nd % that pass threshold (excluding unsampled final years)
+    * empirical based probability - use last 10 years of model data % that pass
+    threshold (excluding unsampled final years)
     """
 
     record = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
     if info.is_model():
         record = general_utils.regrid(record, ds[info.var])
-
-    # delect the latest ari years of data (excluding years that start after last year of init_date )
+    # Select the latest ari years of data (excluding years that start after last year of init_date)
     max_year = ds.init_date.dt.year.max().load()
     min_year = max_year - ari
     ds_subset = ds.where(
-        (ds.time.dt.year.load() >= min_year) & (ds.time.dt.year.load() <= max_year),
+        (ds.time.dt.year.load() > min_year) & (ds.time.dt.year.load() <= max_year),
         drop=True,
     )
-    ds_subset = (ds_subset[info.var] >= record).sum(dim=info.time_dim)
-    annual_probability = ds_subset / ds[info.var].time.size * 100
+    ds_subset = ds_subset.dropna(dim=info.time_dim, how="all")
+    ds_count = (ds_subset[info.var] > record).sum(dim=info.time_dim)
+    annual_probability = ds_count / ds_subset[info.time_dim].size
     cumulative_probability = 1 - (1 - annual_probability) ** ari
 
     # Convert to percentage
     fig, ax = plot_acs_hazard(
-        data=cumulative_probability,
+        data=cumulative_probability * 100,
         stippling=mask,
-        title=f"Probability of record breaking\n{info.metric} in the next {ari} years",
-        baseline=info.date_range,
+        title=f"Probability of record breaking\n{info.metric} in the next {ari} years (empirical)",
+        baseline=date_range_str(ds_subset.time, info.freq),
         cmap=plt.cm.BuPu,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
-        cbar_label=f"Probability [%]",
+        cbar_label="Probability [%]",
         dataset_name=info.long_name_with_obs,
         outfile=f"{info.fig_dir}/new_record_probability_{ari}-year_empirical_{info.filestem(mask)}.png",
         **plot_kwargs,
     )
+
+
+def combine_images(axes, outfile, files):
+    """Combine plot files into a single figure."""
+
+    for i, ax in enumerate(axes.flatten()):
+        ax.axis("off")
+        if i >= len(files):
+            continue
+        img = mpl.image.imread(files[i])
+        ax.imshow(img)
+        ax.axis(False)
+        ax.tick_params(
+            axis="both",
+            which="both",
+            left=False,
+            right=False,
+            top=False,
+            bottom=False,
+        )
+        ax.xaxis.set_major_formatter(plt.NullFormatter())
+        ax.yaxis.set_major_formatter(plt.NullFormatter())
+
+    plt.savefig(outfile, bbox_inches="tight", facecolor="white", dpi=300)
+    plt.show()
+
+
+def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
+    """Combine plots for each model into a single figure.
+
+    Parameters
+    ----------
+    metric : str
+        The metric to combine plots for.
+    bias_correction : {None, 'additive', 'multiplicative'}
+        The bias correction to combine plots
+    obs_name : str, default='AGCD'
+        The name of the observations to include in the combined plot.
+    n_models : int, default=12
+        The number of models to include in each combined plot.
+        If there are more than 12 models, the function assumes that the files
+        are split by year (i.e., the AEP plots)
+
+    Examples
+    --------
+    >>> combine_model_plots(
+    >>>    metric="txx",
+    >>>    bc="additive",
+    >>>    obs_name="AGCD",
+    >>>    fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/",
+    >>>    n_models=12,
+    >>> )
+
+    Notes
+    -----
+    * Work in progress
+    * Searches for files in the output directory with the following naming convention:
+    {prefix}_{metric}_{model}*{bias_correction}{masked}{year}.png
+    where, the file name may or may not include the bias correction and year strings.
+    * It will ignore un-masked versions of plots if masked versions are present.
+    * It will include the observations if they are present in the directory.
+    """
+
+    fig_dir = Path(fig_dir)
+    files = list(fig_dir.glob(f"*{metric}*.png"))
+    files = sorted(files)
+
+    # Start of figure names (these define separate figures into groups to be combined)
+    names = np.unique([re.search(f"(.+?)(?=_{metric})", f.stem).group() for f in files])
+    names = [f for f in names if "combined" not in f]
+
+    # Sort filenames into groups that start with the same names
+    fig = [
+        np.array([f for f in files if f.stem.startswith(f"{prefix}_{metric}")])
+        for prefix in names
+    ]
+
+    # Filter out bias correct or masked versions of the figures
+    for i, prefix in enumerate(names):
+        if bc:
+            if any([bc in f.stem for f in fig[i]]):
+                # Keep only original or bias-corrected versions of the figures
+
+                # BC and obs
+                fig[i] = [
+                    f
+                    for f in fig[i]
+                    if (bc in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)
+                ]
+        else:
+            fig[i] = [f for f in fig[i] if "bias-corrected" not in f.stem]
+
+        # Keep only masked versions of the figures
+        if any(["masked" in f.stem for f in fig[i]]):
+            fig[i] = [
+                f
+                for f in fig[i]
+                if ("masked" in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)
+            ]
+        # Drop any drop_max versions of the figures
+        if any(["drop_max" in f.stem for f in fig[i]]):
+            fig[i] = [f for f in fig[i] if "drop_max" not in f.stem]
+        fig[i] = np.array(fig[i])
+
+    # For each file group, combine the images into a single figure
+    for i, s in enumerate(fig):
+        if i >= len(fig) - 4:
+            outfile = f"combined_{names[i]}_{metric}"
+            if bc is not None:
+                if any([bc in f.stem for f in s]):
+                    outfile += f"_{bc}"
+            if any(["masked" in f.stem for f in s]):
+                outfile += "_masked"
+
+            if len(s) <= n_models:
+                _, axes = plt.subplots(3, 4, figsize=[12, 10], layout="compressed")
+                combine_images(axes, fig_dir / f"{outfile}.png", s)
+            else:
+                for j in range(3):
+                    ss = fig[i][j::3]
+                    year = ss[0].stem.split("_")[-1]
+                    _, axes = plt.subplots(3, 4, figsize=[12, 10], layout="compressed")
+                    combine_images(axes, fig_dir / f"{outfile}_{year}.png", ss)
