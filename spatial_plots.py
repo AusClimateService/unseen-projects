@@ -24,8 +24,8 @@ from acs_plotting_maps import plot_acs_hazard, cmap_dict, tick_dict
 plot_kwargs = dict(
     name="ncra_regions",
     mask_not_australia=True,
-    figsize=[8, 6],
-    xlim=(114, 162),
+    figsize=[6.2, 4.6],
+    xlim=(113, 153),
     ylim=(-43, -8.5),
     contourf=False,
     contour=False,
@@ -33,7 +33,6 @@ plot_kwargs = dict(
     land_shadow=False,
     watermark=None,
 )
-
 func_dict = {
     "mean": np.mean,
     "median": np.nanmedian,
@@ -67,7 +66,7 @@ class InfoSet:
     date_dim : str
         Time dimension name for date range (e.g., "sample" or "time")
     kwargs : dict
-        Additional metric-specific attributes (idx, var, var_name, units, units_label, freq, cmap, cmap_anom, ticks, ticks_anom, ticks_param_trend)
+        Additional metric-specific attributes (idx, var, var_name, units, units_label, freq, cmap, cmap_anom, ticks, ticks_anom, ticks_param_trend, cbar_extend, agcd_mask)
 
     Attributes
     ----------
@@ -244,15 +243,16 @@ def plot_time_agg(info, ds, time_agg="maximum", mask=None, savefig=True):
 
     fig, ax = plot_acs_hazard(
         data=da,
+        stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"{time_agg.capitalize()} {info.metric}",
         date_range=info.date_range,
         cmap=info.cmap,
-        cbar_extend="both",
+        cbar_extend=info.cbar_extend,
         ticks=info.ticks,
         tick_labels=None,
         cbar_label=info.units_label,
         dataset_name=info.long_name,
-        stippling=mask,
         outfile=f"{info.fig_dir}/{time_agg}_{info.filestem(mask)}.png",
         savefig=savefig,
         **plot_kwargs,
@@ -284,9 +284,7 @@ def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=100
 
     def rng_choice_resamples(data, size, resamples):
         """Return resamples of size samples from data."""
-        return np.stack(
-            [rng.choice(data, size=size, replace=False) for _ in range(resamples)]
-        )
+        return np.stack([rng.choice(data, size=size, replace=False) for _ in range(resamples)])
 
     da_subsampled = xr.apply_ufunc(
         rng_choice_resamples,
@@ -297,23 +295,20 @@ def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=100
         vectorize=True,
         dask="parallelized",
         output_dtypes=[np.float64],
-        dask_gufunc_kwargs=dict(
-            output_sizes=dict(k=resamples, subsample=n_obs_samples)
-        ),
+        dask_gufunc_kwargs=dict(output_sizes=dict(k=resamples, subsample=n_obs_samples)),
     )
 
-    da_subsampled_agg = da_subsampled.reduce(
-        func_dict[time_agg], dim="subsample"
-    ).median("k")
+    da_subsampled_agg = da_subsampled.reduce(func_dict[time_agg], dim="subsample").median("k")
 
     for mask in [None, ds.pval_mask]:
         fig, ax = plot_acs_hazard(
             data=da_subsampled_agg,
             stippling=mask,
-            title=f"{info.metric} {time_agg} in obs-sized subsample\n(median of {resamples} resamples)",
+            agcd_mask=info.agcd_mask,
+            title=f"{info.metric} {time_agg} in\nobs-sized subsample\n(median of {resamples} resamples)",
             date_range=info.date_range,
             cmap=info.cmap,
-            cbar_extend="neither",
+            cbar_extend=info.cbar_extend,
             ticks=info.ticks,
             tick_labels=None,
             cbar_label=info.units_label,
@@ -355,9 +350,7 @@ def plot_obs_anom(
         Show model similarity stippling mask
     """
 
-    def soft_record_metric(
-        info, da, da_obs, time_agg, metric, dparams_ns=None, covariate_base=None
-    ):
+    def soft_record_metric(info, da, da_obs, time_agg, metric, dparams_ns=None, covariate_base=None):
         """Calculate the difference between two DataArrays."""
 
         dims = [d for d in da.dims if d not in ["lat", "lon"]]
@@ -374,20 +367,22 @@ def plot_obs_anom(
             cmap=info.cmap_anom,
             ticks=info.ticks_anom,
             cbar_extend="both",
+            vcentre=0,
         )
 
         if metric == "anom_std":
             da_obs_std = da_obs.reduce(np.std, dim="time")
             da_obs_std_regrid = general_utils.regrid(da_obs_std, da_agg)
             anom = anom / da_obs_std_regrid
-            kwargs["title"] += " (/σ(obs))"
-            kwargs["cbar_label"] = f"Observed\nstandard deviation"
+            kwargs["title"] = f"{time_agg.capitalize()} {info.metric}difference\nfrom observed (/σ(obs))"
+            kwargs["cbar_label"] = "Observed\nstandard deviation"
+            kwargs["ticks"] = info.ticks_anom_std  # np.arange(-40, 41, 5)
 
         elif metric == "anom_pct":
             anom = (anom / da_obs_agg_regrid) * 100
-            kwargs["cbar_label"] = f"Difference [%]"
+            kwargs["cbar_label"] = "Difference [%]"
             kwargs["title"] += " (%)"
-            kwargs["ticks"] = np.arange(-30, 31, 5)
+            kwargs["ticks"] = info.ticks_anom_pct  # np.arange(-40, 41, 5)
 
         elif metric == "anom_2000yr":
             covariate = xr.DataArray([covariate_base], dims=info.time_dim)
@@ -395,10 +390,9 @@ def plot_obs_anom(
             rl = rl.squeeze()
             anom = rl / da_obs_agg_regrid
             kwargs["cbar_label"] = f"Ratio to observed {time_agg}"
-            kwargs["title"] = (
-                f"Ratio of UNSEEN 2000-year {info.metric}\nto the observed {time_agg}"
-            )
-            kwargs["ticks"] = np.arange(0.6, 1.45, 0.05)
+            kwargs["title"] = f"Ratio of UNSEEN 2000-year {info.metric}\nto the observed {time_agg}"
+            kwargs["ticks"] = info.ticks_anom_ratio  # np.arange(0.6, 1.45, 0.05)
+            kwargs["vcentre"] = None
         return anom, kwargs
 
     anom, kwargs = soft_record_metric(
@@ -414,6 +408,7 @@ def plot_obs_anom(
     fig, ax = plot_acs_hazard(
         data=anom,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         date_range=info.date_range_obs,
         tick_labels=None,
         dataset_name=info.long_name_with_obs,
@@ -443,15 +438,34 @@ def plot_event_month_mode(info, ds, mask=None):
         dims=["lat", "lon"],
     )
 
+    # Classic cyclic colormap (modified from pypalettes)
+    colours = [
+        # "#C7519CFF",
+        "#BA43B4FF",  # light pink
+        "#8A60B0FF",
+        "#3333FFFF",
+        "#1F83B4FF",
+        "#12A2A8FF",
+        "#2CA030FF",
+        "#78A641FF",
+        "#BCBD22FF",
+        "#FFD94AFF",
+        "#FFAA0EFF",
+        "#FF7F0EFF",
+        "#D63A3AFF",
+    ]
+
+    cmap = mpl.colors.ListedColormap(colours)
     # Map of most common month
     fig, ax = plot_acs_hazard(
         data=da,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"{info.metric} most common month",
         date_range=info.date_range,
-        cmap=plt.cm.gist_rainbow,
+        cmap=cmap,
         cbar_extend="neither",
-        ticks=np.arange(0.5, 12.5),
+        ticks=np.arange(0.5, 13.5),
         tick_labels=list(calendar.month_name)[1:],
         cbar_label="",
         dataset_name=info.long_name,
@@ -487,6 +501,7 @@ def plot_event_year(info, ds, time_agg="maximum", mask=None):
     fig, ax = plot_acs_hazard(
         data=da,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"Year of {time_agg} {info.metric}",
         date_range=info.date_range,
         cmap=cmap_dict["inferno"],
@@ -523,9 +538,10 @@ def plot_gev_param_trend(info, dparams_ns, param="location", mask=None):
     fig, ax = plot_acs_hazard(
         data=da,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"{info.metric} GEV distribution\n{param} parameter trend",
         date_range=info.date_range,
-        cmap=info.cmap_anom,
+        cmap=cmap_dict["anom"],
         cbar_extend="both",
         ticks=info.ticks_param_trend[param],
         cbar_label=f"{param.capitalize()} parameter\n[{info.units} / decade]",
@@ -564,10 +580,11 @@ def plot_aep(info, dparams_ns, times, aep=1, mask=None):
         fig, ax = plot_acs_hazard(
             data=da_aep.isel({info.time_dim: i}),
             stippling=mask,
-            title=f"{info.metric}\n{aep}% annual exceedance probability",
+            agcd_mask=info.agcd_mask,
+            title=f"{info.metric} {aep}% annual\nexceedance probability",
             date_range=time,
             cmap=info.cmap,
-            cbar_extend="both",
+            cbar_extend=info.cbar_extend,
             ticks=info.ticks,
             tick_labels=None,
             cbar_label=info.units_label,
@@ -577,13 +594,12 @@ def plot_aep(info, dparams_ns, times, aep=1, mask=None):
         )
 
     # Time difference (i.e., change in return level)
-    da = da_aep.isel({info.time_dim: -1}, drop=True) - da_aep.isel(
-        {info.time_dim: 0}, drop=True
-    )
+    da = da_aep.isel({info.time_dim: -1}, drop=True) - da_aep.isel({info.time_dim: 0}, drop=True)
     fig, ax = plot_acs_hazard(
         data=da,
         stippling=mask,
-        title=f"Change in {info.metric}\n{aep}% annual exceedance probability",
+        agcd_mask=info.agcd_mask,
+        title=f"Change in {info.metric} {aep}%\nannual exceedance probability",
         date_range=f"Difference between {times[0].item()} and {times[1].item()}",
         cmap=info.cmap_anom,
         cbar_extend="both",
@@ -617,10 +633,11 @@ def plot_aep_empirical(info, ds, aep=1, mask=None):
     fig, ax = plot_acs_hazard(
         data=da_aep,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"{info.metric} empirical {aep}%\nannual exceedance probability",
         date_range=info.date_range,
         cmap=info.cmap,
-        cbar_extend="both",
+        cbar_extend=info.cbar_extend,
         ticks=info.ticks,
         tick_labels=None,
         cbar_label=info.units_label,
@@ -662,9 +679,7 @@ def plot_obs_ari(
     if info.is_model():
         da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
         da_obs_agg = general_utils.regrid(da_obs_agg, ds[info.var])
-        cbar_label = (
-            f"Model-estimated\nannual recurrence interval\nin {covariate_base} [years]"
-        )
+        cbar_label = f"Model-estimated\nannual recurrence interval\nin {covariate_base} [years]"
     else:
         da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
         cbar_label = f"Annual recurrence\ninterval in {covariate_base} [years]"
@@ -687,6 +702,7 @@ def plot_obs_ari(
     fig, ax = plot_acs_hazard(
         data=rp,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"Annual recurrence interval\nof observed {info.metric} {time_agg}",
         date_range=info.date_range_obs,
         cmap=cmap,
@@ -727,10 +743,8 @@ def plot_obs_ari_empirical(
     if info.is_model():
         da = ds[info.var]
         da_obs_agg = general_utils.regrid(da_obs_agg, da)
-        long_name = f"{info.obs_name}, {info.long_name}"
     else:
         da = ds_obs[info.var]
-        long_name = info.obs_name
 
     rp = eva.get_empirical_return_period(da, da_obs_agg, core_dim=info.time_dim)
 
@@ -740,7 +754,8 @@ def plot_obs_ari_empirical(
     fig, ax = plot_acs_hazard(
         data=rp,
         stippling=mask,
-        title=f"Empirical annual recurrence interval\nof observed {info.metric} {time_agg}",
+        agcd_mask=info.agcd_mask,
+        title=f"Empirical annual recurrence\ninterval of observed\n{info.metric} {time_agg}",
         date_range=info.date_range_obs,
         cmap=cmap,
         cbar_extend="max",
@@ -753,9 +768,7 @@ def plot_obs_ari_empirical(
     return
 
 
-def plot_new_record_probability(
-    info, ds_obs, ds, dparams_ns, covariate_base, time_agg, ari=10, mask=None
-):
+def plot_new_record_probability(info, ds_obs, ds, dparams_ns, covariate_base, time_agg, ari=10, mask=None):
     """Plot map of the probability of breaking the obs record in the next X years.
 
     Parameters
@@ -813,13 +826,14 @@ def plot_new_record_probability(
         dask="parallelized",
         output_dtypes=["float64"],
     )
-
+    baseline = f"{ds_obs.time.dt.year.min().item() - 1} to {ds_obs.time.dt.year.max().item()}"
     fig, ax = plot_acs_hazard(
         data=probability,
         stippling=mask,
+        agcd_mask=info.agcd_mask,
         title=f"Probability of record breaking\n{info.metric} in the next {ari} years",
         date_range=f"{covariate_base} to {covariate_base + ari}",
-        baseline=info.date_range,
+        baseline=baseline,
         cmap=plt.cm.BuPu,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
@@ -830,9 +844,7 @@ def plot_new_record_probability(
     )
 
 
-def plot_new_record_probability_empirical(
-    info, ds_obs, ds, time_agg, ari=10, mask=None
-):
+def plot_new_record_probability_empirical(info, ds_obs, ds, time_agg, ari=10, mask=None):
     """Plot map of the probability of breaking the obs record in the next X years.
 
     Parameters
@@ -869,13 +881,14 @@ def plot_new_record_probability_empirical(
     ds_count = (ds_subset[info.var] > record).sum(dim=info.time_dim)
     annual_probability = ds_count / ds_subset[info.time_dim].size
     cumulative_probability = 1 - (1 - annual_probability) ** ari
-
+    baseline = f"{ds_subset.time.dt.year.min().item() - 1} to {ds_subset.time.dt.year.max().item()}"
     # Convert to percentage
     fig, ax = plot_acs_hazard(
         data=cumulative_probability * 100,
         stippling=mask,
-        title=f"Probability of record breaking\n{info.metric} in the next {ari} years (empirical)",
-        baseline=date_range_str(ds_subset.time, info.freq),
+        agcd_mask=info.agcd_mask,
+        title=f"Empirical probability of\nrecord breaking {info.metric}\nin the next {ari} years",
+        baseline=baseline,
         cmap=plt.cm.BuPu,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
@@ -929,13 +942,13 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
 
     Examples
     --------
-    >>> combine_model_plots(
-    >>>    metric="txx",
-    >>>    bc="additive",
-    >>>    obs_name="AGCD",
-    >>>    fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/",
-    >>>    n_models=12,
-    >>> )
+     combine_model_plots(
+        metric="txx",
+        bc="additive",
+        obs_name="AGCD",
+        fig_dir=f"/g/data/xv83/unseen-projects/outputs/txx/figures/",
+        n_models=12,
+     )
 
     Notes
     -----
@@ -956,10 +969,7 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
     names = [f for f in names if "combined" not in f]
 
     # Sort filenames into groups that start with the same names
-    fig = [
-        np.array([f for f in files if f.stem.startswith(f"{prefix}_{metric}")])
-        for prefix in names
-    ]
+    fig = [np.array([f for f in files if f.stem.startswith(f"{prefix}_{metric}")]) for prefix in names]
 
     # Filter out bias correct or masked versions of the figures
     for i, prefix in enumerate(names):
@@ -968,42 +978,52 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
                 # Keep only original or bias-corrected versions of the figures
 
                 # BC and obs
-                fig[i] = [
-                    f
-                    for f in fig[i]
-                    if (bc in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)
-                ]
+                fig[i] = [f for f in fig[i] if (bc in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)]
         else:
             fig[i] = [f for f in fig[i] if "bias-corrected" not in f.stem]
 
         # Keep only masked versions of the figures
         if any(["masked" in f.stem for f in fig[i]]):
-            fig[i] = [
-                f
-                for f in fig[i]
-                if ("masked" in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)
-            ]
+            fig[i] = [f for f in fig[i] if ("masked" in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)]
         # Drop any drop_max versions of the figures
         if any(["drop_max" in f.stem for f in fig[i]]):
             fig[i] = [f for f in fig[i] if "drop_max" not in f.stem]
         fig[i] = np.array(fig[i])
+        if "subsampled" in prefix:
+            # Add obs max to subample
+            fig[i] = [list(fig_dir.glob(f"maximum_{metric}_{obs_name}*.png"))[0], *fig[i]]
+
+        # if len(fig[i]) == n_models:
+        #     # Model obs to end
+        #     fig[i] = [*fig[i][1:], fig[i][0]]
 
     # For each file group, combine the images into a single figure
     for i, s in enumerate(fig):
-        if i >= len(fig) - 4:
-            outfile = f"combined_{names[i]}_{metric}"
-            if bc is not None:
-                if any([bc in f.stem for f in s]):
-                    outfile += f"_{bc}"
-            if any(["masked" in f.stem for f in s]):
-                outfile += "_masked"
+        outfile = f"combined_{names[i]}_{metric}"
+        if bc is not None:
+            if any([bc in f.stem for f in s]):
+                outfile += f"_{bc}"
+        if any(["masked" in f.stem for f in s]):
+            outfile += "_masked"
 
-            if len(s) <= n_models:
+        if len(s) <= n_models:
+            _, axes = plt.subplots(3, 4, figsize=[12, 10], layout="compressed")
+            combine_images(axes, fig_dir / f"{outfile}.png", s)
+        else:
+            for j in range(3):
+                ss = fig[i][j::3]
+                year = ss[0].stem.split("_")[-1]
                 _, axes = plt.subplots(3, 4, figsize=[12, 10], layout="compressed")
-                combine_images(axes, fig_dir / f"{outfile}.png", s)
-            else:
-                for j in range(3):
-                    ss = fig[i][j::3]
-                    year = ss[0].stem.split("_")[-1]
-                    _, axes = plt.subplots(3, 4, figsize=[12, 10], layout="compressed")
-                    combine_images(axes, fig_dir / f"{outfile}_{year}.png", ss)
+                combine_images(axes, fig_dir / f"{outfile}_{year}.png", ss)
+
+
+# if __name__ == "__main__":
+#     # Combine model plots
+#     metric = "txx"
+#     combine_model_plots(
+#         metric=metric,
+#         bc="additive",
+#         obs_name="AGCD",
+#         fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/",
+#         n_models=12,
+#     )
