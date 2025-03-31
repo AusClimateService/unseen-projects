@@ -40,11 +40,11 @@ GEV_OBS_OPTIONS=--reference_time_period ${REFERENCE_TIME_PERIOD}
 MIN_LEAD_SHAPE_SPATIAL_AGG=median
 TIME_AGG=maximum
 # Non-stationary GEV covariate used for return levels
-GEV_COVARIATE_BASE=2025
+COVARIATE_BASE=2025
 # Period for trend calculation (string converted to python)
 GEV_TREND_PERIOD='[1961, 2025]'
 # Dictionary of plot options for spatial analysis notebook (string converted to python)
-PLOT_DICT='dict(metric="TXx", var="${VAR}", var_name="Temperature", units="°C", units_label="Temperature [°C]", freq="${TIME_FREQ}", cmap=cmap_dict["tasmax"], cmap_anom=cmap_dict["anom"], ticks=np.arange(22, 58 + 2, 2), ticks_anom=np.arange(-5, 5.5, 0.5), ticks_anom_std=np.arange(-5, 5.5, 0.5), ticks_anom_pct=np.arange(-30, 35, 5), ticks_anom_ratio=np.arange(0.6, 1.45, 0.05), ticks_param_trend={"location": np.arange(-0.6, 0.61, 0.1), "scale": np.arange(-0.12, 0.122, 0.02)}, cbar_extend="both", agcd_mask=False)'
+PLOT_DICT='dict(metric="TXx", var="${VAR}", var_name="Temperature", units="°C", units_label="Temperature [°C]", freq="${TIME_FREQ}", cmap=cmap_dict["tasmax"], cmap_anom=cmap_dict["anom"], ticks=np.arange(22, 58 + 2, 2), ticks_anom=np.arange(-8, 9, 1), ticks_anom_std=np.arange(-8, 9, 1), ticks_anom_pct=np.arange(-25, 30, 5), ticks_anom_ratio=np.arange(0.7, 1.35, 0.05), ticks_param_trend={"location": np.arange(-0.6, 0.61, 0.1), "scale": np.arange(-0.12, 0.122, 0.02)}, cbar_extend="both", agcd_mask=False)'
 #  Plot additive/multiplicative bias corrected metric in spatial analysis notebook (True/False)
 PLOT_ADDITIVE_BC=1
 PLOT_MULTIPLICATIVE_BC=0
