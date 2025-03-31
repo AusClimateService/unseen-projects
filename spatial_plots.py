@@ -40,6 +40,23 @@ func_dict = {
     "minimum": np.nanmin,
     "sum": np.sum,
 }
+# Classic cyclic colormap (modified from pypalettes)
+month_colours = [
+    # "#C7519CFF",
+    "#BA43B4FF",  # light pink
+    "#8A60B0FF",
+    "#3333FFFF",
+    "#1F83B4FF",
+    "#12A2A8FF",
+    "#2CA030FF",
+    "#78A641FF",
+    "#BCBD22FF",
+    "#FFD94AFF",
+    "#FFAA0EFF",
+    "#FF7F0EFF",
+    "#D63A3AFF",
+]
+month_cmap = mpl.colors.ListedColormap(month_colours)
 
 
 class InfoSet:
@@ -57,7 +74,7 @@ class InfoSet:
         Observational dataset name
     ds : xarray.Dataset, optional
         Model or observational dataset
-    ds_obs : xarray.Dataset, optional
+    obs_ds : xarray.Dataset, optional
         Observational dataset (only if different from ds)
     bias_correction : str, default None
         Bias correction method
@@ -104,11 +121,10 @@ class InfoSet:
     def __init__(
         self,
         name,
-        metric,
         file,
         ds=None,
         obs_name=None,
-        ds_obs=None,
+        obs_ds=None,
         bias_correction=None,
         fig_dir=Path.home(),
         date_dim="time",
@@ -117,7 +133,6 @@ class InfoSet:
         """Initialise class instance."""
         super().__init__()
         self.name = name
-        self.metric = metric
         self.file = Path(file)
         self.obs_name = obs_name
         self.bias_correction = bias_correction
@@ -126,22 +141,29 @@ class InfoSet:
         # Get variables from hazard_dict
         for key, value in kwargs.items():
             setattr(self, key, value)
-        self.cmap_anom.set_bad("lightgrey")
-        self.cmap.set_bad("lightgrey")
+
+        self.ds = ds
+        self.obs_ds = obs_ds
 
         # Set dataset-specific attributes
         if ds is not None:
             self.date_range = date_range_str(ds[date_dim], self.freq)
-        if ds_obs is not None:
-            self.date_range_obs = date_range_str(ds_obs.time, self.freq)
+        if obs_ds is not None:
+            self.date_range_obs = date_range_str(obs_ds.time, self.freq)
             if ds is None:
                 self.date_range = self.date_range_obs
-
+        if self.bias_correction is None:
+            self.bc_label = ""
+            self.bc_ext = ""
+        else:
+            self.bc_label = f" ({self.bias_correction} bias corrected)"
+            self.bc_ext = f"_{self.obs_name}_{self.bias_correction}_bc"
         if self.is_model():
             self.time_dim = "sample"
             self.long_name = f"{self.name} ensemble"
+            self.title_name = self.name
             if self.bias_correction:
-                self.long_name += f" ({self.bias_correction} bias corrected)"
+                self.long_name += self.bc_label
             # else:
             #     self.n_samples = ds[self.var].dropna("sample", how="any")["sample"].size
             #     self.long_name += f"(samples={self.n_samples})"
@@ -149,7 +171,14 @@ class InfoSet:
         else:
             self.time_dim = "time"
             self.long_name = f"{self.name}"
+            self.title_name = f"{self.name} observational dataset"
             self.long_name_with_obs = self.long_name
+
+        # Format colour maps
+        self.cmap_anom.set_bad("lightgrey")
+        self.cmap.set_bad("lightgrey")
+        # Set ticks to zero for small values
+        self.ticks_anom[np.fabs(self.ticks_anom) < 1e-6] = 0
 
     def filestem(self, mask=None):
         """Return filestem with or without "_masked" suffix."""
@@ -238,8 +267,7 @@ def plot_time_agg(info, ds, time_agg="maximum", mask=None, savefig=True):
         Save figure to file
     """
 
-    dims = [d for d in ds.dims if d not in ["lat", "lon"]]
-    da = ds[info.var].reduce(func_dict[time_agg], dim=dims)
+    da = ds[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
 
     fig, ax = plot_acs_hazard(
         data=da,
@@ -259,7 +287,35 @@ def plot_time_agg(info, ds, time_agg="maximum", mask=None, savefig=True):
     )
 
 
-def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=1000):
+def resample_subsample(info, ds, time_agg, n_samples, resamples):
+    """Return resamples of data aggregated over time."""
+    rng = np.random.default_rng(seed=0)
+
+    def rng_choice_resamples(data, size, resamples):
+        """Return resamples of size samples from data."""
+        return np.stack(
+            [rng.choice(data, size=size, replace=False) for _ in range(resamples)]
+        )
+
+    da_subsampled = xr.apply_ufunc(
+        rng_choice_resamples,
+        ds[info.var],
+        input_core_dims=[[info.time_dim]],
+        output_core_dims=[["k", "subsample"]],
+        kwargs=dict(size=n_samples, resamples=resamples),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[np.float64],
+        dask_gufunc_kwargs=dict(output_sizes=dict(k=resamples, subsample=n_samples)),
+    )
+
+    da_subsampled_agg = da_subsampled.reduce(func_dict[time_agg], dim="subsample").median(
+        "k"
+    )
+    return da_subsampled_agg
+
+
+def plot_time_agg_subsampled(info, ds, obs_ds, time_agg="maximum", resamples=1000):
     """Plot map of obs-sized subsample of data (sample median of time-aggregate).
 
     Parameters
@@ -268,37 +324,17 @@ def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=100
         Dataset information instance
     ds : xarray.Dataset
         Model dataset
-    ds_obs : xarray.Dataset
+    obs_ds : xarray.Dataset
         Observational dataset
     time_agg : {"mean", "median", "maximum", "minimum", "sum"}, default "maximum"
         Metric to aggregate over
     resamples : int, default 1000
         Number of random samples of subsampled data
-    # mask : xarray.DataArray, default None
-    #     Show model similarity stippling mask
     """
+
     assert "pval_mask" in ds.data_vars, "Model similarity mask not found in dataset."
-
-    rng = np.random.default_rng(seed=0)
-    n_obs_samples = ds_obs[info.var].time.size
-
-    def rng_choice_resamples(data, size, resamples):
-        """Return resamples of size samples from data."""
-        return np.stack([rng.choice(data, size=size, replace=False) for _ in range(resamples)])
-
-    da_subsampled = xr.apply_ufunc(
-        rng_choice_resamples,
-        ds[info.var],
-        input_core_dims=[[info.time_dim]],
-        output_core_dims=[["k", "subsample"]],
-        kwargs=dict(size=n_obs_samples, resamples=resamples),
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=[np.float64],
-        dask_gufunc_kwargs=dict(output_sizes=dict(k=resamples, subsample=n_obs_samples)),
-    )
-
-    da_subsampled_agg = da_subsampled.reduce(func_dict[time_agg], dim="subsample").median("k")
+    n_obs_samples = obs_ds[info.var].time.size
+    da_subsampled_agg = resample_subsample(info, ds, time_agg, n_obs_samples, resamples)
 
     for mask in [None, ds.pval_mask]:
         fig, ax = plot_acs_hazard(
@@ -318,10 +354,60 @@ def plot_time_agg_subsampled(info, ds, ds_obs, time_agg="maximum", resamples=100
         )
 
 
+def soft_record_metric(
+    info, da, obs_da, time_agg, metric, dparams_ns=None, covariate_base=None
+):
+    """Calculate the difference between two DataArrays."""
+
+    dims = [d for d in da.dims if d not in ["lat", "lon"]]
+    da_agg = da.reduce(func_dict[time_agg], dim=dims)
+    obs_da_agg = obs_da.reduce(func_dict[time_agg], dim="time")
+
+    # Regrid obs to model grid (after time aggregation)
+    if not all(([da[dim].equals(obs_da[dim]) for dim in ["lat", "lon"]])):
+        obs_da_agg_regrid = general_utils.regrid(obs_da_agg, da_agg)
+    anom = da_agg - obs_da_agg_regrid
+
+    kwargs = dict(
+        title=f"{time_agg.capitalize()} {info.metric}\ndifference from observed",
+        cbar_label=f"Anomaly [{info.units}]",
+        cmap=info.cmap_anom,
+        ticks=info.ticks_anom,
+        cbar_extend="both",
+    )
+
+    if metric == "anom_std":
+        obs_da_std = obs_da.reduce(np.std, dim="time")
+        obs_da_std_regrid = general_utils.regrid(obs_da_std, da_agg)
+        anom = anom / obs_da_std_regrid
+        kwargs["title"] = f"Standardised {time_agg} {info.metric} anomaly"
+        kwargs["cbar_label"] = "Observed\nstandard deviation"
+        kwargs["ticks"] = info.ticks_anom_std  # np.arange(-40, 41, 5)
+
+    elif metric == "anom_pct":
+        anom = (anom / obs_da_agg_regrid) * 100
+        kwargs["cbar_label"] = "Difference [%]"
+        kwargs["title"] += " (%)"
+        kwargs["ticks"] = info.ticks_anom_pct  # np.arange(-40, 41, 5)
+
+    elif metric == "anom_2000yr":
+        covariate = xr.DataArray([covariate_base], dims=info.time_dim)
+        rl = eva.get_return_level(2000, dparams_ns, covariate, dims=dims)
+        rl = rl.squeeze()
+        anom = rl / obs_da_agg_regrid
+        kwargs["cbar_label"] = f"Ratio to observed {time_agg}"
+        kwargs["title"] = (
+            f"Ratio of UNSEEN 2000-year {info.metric}\nto the observed {time_agg}"
+        )
+        kwargs["ticks"] = info.ticks_anom_ratio  # np.arange(0.6, 1.45, 0.05)
+        kwargs["vcentre"] = None
+    return anom, kwargs
+
+
 def plot_obs_anom(
     info,
     ds,
-    ds_obs,
+    obs_ds,
     time_agg="maximum",
     metric="anom",
     dparams_ns=None,
@@ -336,7 +422,7 @@ def plot_obs_anom(
         Dataset information
     ds : xarray.Dataset
         Model dataset
-    ds_obs : xarray.Dataset
+    obs_ds : xarray.Dataset
         Observational dataset
     time_agg : {"mean", "median", "maximum", "minimum", "sum"}, default "maximum"
         Time aggregation function name
@@ -350,55 +436,10 @@ def plot_obs_anom(
         Show model similarity stippling mask
     """
 
-    def soft_record_metric(info, da, da_obs, time_agg, metric, dparams_ns=None, covariate_base=None):
-        """Calculate the difference between two DataArrays."""
-
-        dims = [d for d in da.dims if d not in ["lat", "lon"]]
-        da_agg = da.reduce(func_dict[time_agg], dim=dims)
-        da_obs_agg = da_obs.reduce(func_dict[time_agg], dim="time")
-
-        # Regrid obs to model grid (after time aggregation)
-        da_obs_agg_regrid = general_utils.regrid(da_obs_agg, da_agg)
-        anom = da_agg - da_obs_agg_regrid
-
-        kwargs = dict(
-            title=f"{time_agg.capitalize()} {info.metric}\ndifference from observed",
-            cbar_label=f"Anomaly [{info.units}]",
-            cmap=info.cmap_anom,
-            ticks=info.ticks_anom,
-            cbar_extend="both",
-            vcentre=0,
-        )
-
-        if metric == "anom_std":
-            da_obs_std = da_obs.reduce(np.std, dim="time")
-            da_obs_std_regrid = general_utils.regrid(da_obs_std, da_agg)
-            anom = anom / da_obs_std_regrid
-            kwargs["title"] = f"{time_agg.capitalize()} {info.metric}difference\nfrom observed (/σ(obs))"
-            kwargs["cbar_label"] = "Observed\nstandard deviation"
-            kwargs["ticks"] = info.ticks_anom_std  # np.arange(-40, 41, 5)
-
-        elif metric == "anom_pct":
-            anom = (anom / da_obs_agg_regrid) * 100
-            kwargs["cbar_label"] = "Difference [%]"
-            kwargs["title"] += " (%)"
-            kwargs["ticks"] = info.ticks_anom_pct  # np.arange(-40, 41, 5)
-
-        elif metric == "anom_2000yr":
-            covariate = xr.DataArray([covariate_base], dims=info.time_dim)
-            rl = eva.get_return_level(2000, dparams_ns, covariate, dims=dims)
-            rl = rl.squeeze()
-            anom = rl / da_obs_agg_regrid
-            kwargs["cbar_label"] = f"Ratio to observed {time_agg}"
-            kwargs["title"] = f"Ratio of UNSEEN 2000-year {info.metric}\nto the observed {time_agg}"
-            kwargs["ticks"] = info.ticks_anom_ratio  # np.arange(0.6, 1.45, 0.05)
-            kwargs["vcentre"] = None
-        return anom, kwargs
-
     anom, kwargs = soft_record_metric(
         info,
         ds[info.var],
-        ds_obs[info.var],
+        obs_ds[info.var],
         time_agg,
         metric,
         dparams_ns,
@@ -438,24 +479,6 @@ def plot_event_month_mode(info, ds, mask=None):
         dims=["lat", "lon"],
     )
 
-    # Classic cyclic colormap (modified from pypalettes)
-    colours = [
-        # "#C7519CFF",
-        "#BA43B4FF",  # light pink
-        "#8A60B0FF",
-        "#3333FFFF",
-        "#1F83B4FF",
-        "#12A2A8FF",
-        "#2CA030FF",
-        "#78A641FF",
-        "#BCBD22FF",
-        "#FFD94AFF",
-        "#FFAA0EFF",
-        "#FF7F0EFF",
-        "#D63A3AFF",
-    ]
-
-    cmap = mpl.colors.ListedColormap(colours)
     # Map of most common month
     fig, ax = plot_acs_hazard(
         data=da,
@@ -463,7 +486,7 @@ def plot_event_month_mode(info, ds, mask=None):
         agcd_mask=info.agcd_mask,
         title=f"{info.metric} most common month",
         date_range=info.date_range,
-        cmap=cmap,
+        cmap=month_cmap,
         cbar_extend="neither",
         ticks=np.arange(0.5, 13.5),
         tick_labels=list(calendar.month_name)[1:],
@@ -594,7 +617,9 @@ def plot_aep(info, dparams_ns, times, aep=1, mask=None):
         )
 
     # Time difference (i.e., change in return level)
-    da = da_aep.isel({info.time_dim: -1}, drop=True) - da_aep.isel({info.time_dim: 0}, drop=True)
+    da = da_aep.isel({info.time_dim: -1}, drop=True) - da_aep.isel(
+        {info.time_dim: 0}, drop=True
+    )
     fig, ax = plot_acs_hazard(
         data=da,
         stippling=mask,
@@ -649,7 +674,7 @@ def plot_aep_empirical(info, ds, aep=1, mask=None):
 
 def plot_obs_ari(
     info,
-    ds_obs,
+    obs_ds,
     ds,
     dparams_ns,
     covariate_base,
@@ -662,7 +687,7 @@ def plot_obs_ari(
     ----------
     info : Dataset
         Dataset information
-    ds_obs : xarray.Dataset
+    obs_ds : xarray.Dataset
         Observational dataset
     ds : xarray.Dataset, optional
         Model dataset
@@ -676,17 +701,19 @@ def plot_obs_ari(
         Show model similarity stippling mask
     """
 
-    if info.is_model():
-        da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
-        da_obs_agg = general_utils.regrid(da_obs_agg, ds[info.var])
-        cbar_label = f"Model-estimated\nannual recurrence interval\nin {covariate_base} [years]"
+    if not all(([ds[dim].equals(obs_ds[dim]) for dim in ["lat", "lon"]])):
+        obs_da_agg = obs_ds[info.var].reduce(func_dict[time_agg], dim="time")
+        obs_da_agg = general_utils.regrid(obs_da_agg, ds[info.var])
+        cbar_label = (
+            f"Model-estimated\nannual recurrence interval\nin {covariate_base} [years]"
+        )
     else:
-        da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
+        obs_da_agg = obs_ds[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
         cbar_label = f"Annual recurrence\ninterval in {covariate_base} [years]"
 
     rp = xr.apply_ufunc(
         eva.get_return_period,
-        da_obs_agg,
+        obs_da_agg,
         dparams_ns,
         input_core_dims=[[], ["dparams"]],
         output_core_dims=[[]],
@@ -718,7 +745,7 @@ def plot_obs_ari(
 
 def plot_obs_ari_empirical(
     info,
-    ds_obs,
+    obs_ds,
     ds=None,
     time_agg="maximum",
     mask=None,
@@ -729,7 +756,7 @@ def plot_obs_ari_empirical(
     ----------
     info : Dataset
         Dataset information
-    ds_obs : xarray.Dataset
+    obs_ds : xarray.Dataset
         Observational dataset
     ds : xarray.Dataset, default None
         Model dataset
@@ -739,14 +766,14 @@ def plot_obs_ari_empirical(
         Show model similarity stippling mask
     """
 
-    da_obs_agg = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
-    if info.is_model():
+    obs_da_agg = obs_ds[info.var].reduce(func_dict[time_agg], dim="time")
+    if not all(([ds[dim].equals(obs_ds[dim]) for dim in ["lat", "lon"]])):
         da = ds[info.var]
-        da_obs_agg = general_utils.regrid(da_obs_agg, da)
+        obs_da_agg = general_utils.regrid(obs_da_agg, da)
     else:
-        da = ds_obs[info.var]
+        da = obs_ds[info.var]
 
-    rp = eva.get_empirical_return_period(da, da_obs_agg, core_dim=info.time_dim)
+    rp = eva.get_empirical_return_period(da, obs_da_agg, core_dim=info.time_dim)
 
     cmap = cmap_dict["inferno"]
     cmap.set_bad("lightgrey")
@@ -768,14 +795,75 @@ def plot_obs_ari_empirical(
     return
 
 
-def plot_new_record_probability(info, ds_obs, ds, dparams_ns, covariate_base, time_agg, ari=10, mask=None):
+def new_record_probability(record, dparams_ns, covariate, ari):
+    """Probability of exceeding a record in the next {ari} years."""
+
+    shape, loc, scale = eva.unpack_gev_params(dparams_ns, covariate=covariate)
+    loc, scale = loc.squeeze(), scale.squeeze()
+    # Probability of exceeding the record in a single year
+    annual_probability = 1 - genextreme.cdf(record, shape, loc=loc, scale=scale)
+    # Probability of exceeding the record at least once over the specified period
+    cumulative_probability = 1 - (1 - annual_probability) ** ari
+    # Convert to percentage
+    probability = cumulative_probability * 100
+    return probability
+
+
+def nonstationary_new_record_probability(
+    record, dparams_ns, start_year, n_years, time_dim="time"
+):
+    """Calculate the cumulative probability of exceeding a level in a given period."""
+
+    def annual_exceedance_probability(return_level, dparams, covariate):
+        """Calculate the annual exceedance probability for a given level and covariate."""
+
+        shape, loc, scale = eva.unpack_gev_params(dparams, covariate=covariate)
+        loc, scale = loc.squeeze(), scale.squeeze()
+        annual_probability = 1 - genextreme.cdf(return_level, shape, loc=loc, scale=scale)
+        return annual_probability
+
+    def cumulative_aep(return_level, dparams_ns, covariate):
+        """Calculate the cumulative probability of exceeding a record in a given period."""
+
+        annual_probabilities = []
+        for year in covariate:
+            annual_probability = annual_exceedance_probability(
+                return_level, dparams_ns, year
+            )
+            annual_probabilities.append(annual_probability)
+
+        # Combine the annual probabilities to get the cumulative probability
+        cumulative_probability = 1 - np.prod(1 - np.array(annual_probabilities))
+        return cumulative_probability
+
+    # Create an array of covariate years in the time period
+    covariate = xr.DataArray(range(start_year, start_year + n_years + 1), dims=time_dim)
+
+    # Vectorize the cumulative probability function
+    cumulative_probability = xr.apply_ufunc(
+        cumulative_aep,
+        record,
+        dparams_ns,
+        input_core_dims=[[], ["dparams"]],
+        output_core_dims=[[]],
+        kwargs=dict(covariate=covariate),
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=["float64"],
+    )
+    return cumulative_probability
+
+
+def plot_new_record_probability(
+    info, obs_ds, ds, dparams_ns, start_year, time_agg, n_years=10, mask=None
+):
     """Plot map of the probability of breaking the obs record in the next X years.
 
     Parameters
     ----------
     info : Dataset
         Dataset information
-    ds_obs : xarray.Dataset
+    obs_ds : xarray.Dataset
         Observational dataset
     ds : xarray.Dataset, optional
         Model dataset
@@ -785,116 +873,108 @@ def plot_new_record_probability(info, ds_obs, ds, dparams_ns, covariate_base, ti
         Covariate for non-stationary GEV parameters (e.g., single year)
     time_agg : {"mean", "median", "maximum", "minimum", "sum"}
         Time aggregation function name
-    ari : int, default 10
+    n_years : int, default 10
         Return period in years
     mask : xarray.DataArray, default None
         Show model similarity stippling mask
-
-    Notes
-    -----
-    * The probability is calculated as 1 - (1 - P(record in a single year))^X
-    * The covariate is set to the middle of the year range (covariate + ari/2)
     """
 
-    def new_record_probability(record, dparams_ns, covariate, ari):
-        """Probability of exceeding a record in the next {ari} years."""
-        shape, loc, scale = eva.unpack_gev_params(dparams_ns, covariate=covariate)
-        loc, scale = loc.squeeze(), scale.squeeze()
-        # Probability of exceeding the record in a single year
-        annual_probability = 1 - genextreme.cdf(record, shape, loc=loc, scale=scale)
-        # Probability of exceeding the record at least once over the specified period
-        cumulative_probability = 1 - (1 - annual_probability) ** ari
-        # Convert to percentage
-        probability = cumulative_probability * 100
-        return probability
-
-    record = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
-    if info.is_model():
-        record = general_utils.regrid(record, ds[info.var])
-
-    probability = xr.apply_ufunc(
-        new_record_probability,
-        record,
-        dparams_ns,
-        input_core_dims=[[], ["dparams"]],
-        output_core_dims=[[]],
-        kwargs=dict(
-            covariate=xr.DataArray([covariate_base + int(ari / 2)], dims=info.time_dim),
-            ari=ari,
-        ),
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=["float64"],
+    # Get the event record (return period) for the obs data
+    record = obs_ds[info.var].reduce(func_dict[time_agg], dim="time")
+    if not all(([ds[dim].equals(obs_ds[dim]) for dim in ["lat", "lon"]])):
+        record = general_utils.regrid(record, ds)
+    cumulative_probability = nonstationary_new_record_probability(
+        record, dparams_ns, start_year, n_years, info.time_dim
     )
-    baseline = f"{ds_obs.time.dt.year.min().item() - 1} to {ds_obs.time.dt.year.max().item()}"
+
+    baseline = (
+        f"{obs_ds.time.dt.year.min().item() - 1} to {obs_ds.time.dt.year.max().item()}"
+    )
     fig, ax = plot_acs_hazard(
-        data=probability,
+        data=cumulative_probability * 100,
         stippling=mask,
         agcd_mask=info.agcd_mask,
-        title=f"Probability of record breaking\n{info.metric} in the next {ari} years",
-        date_range=f"{covariate_base} to {covariate_base + ari}",
+        title=f"Probability of record breaking\n{info.metric} in the next {n_years} years",
+        date_range=f"{start_year} to {start_year + n_years}",
         baseline=baseline,
         cmap=plt.cm.BuPu,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
         cbar_label="Probability [%]",
         dataset_name=info.long_name_with_obs,
-        outfile=f"{info.fig_dir}/new_record_probability_{ari}-year_{info.filestem(mask)}.png",
+        outfile=f"{info.fig_dir}/new_record_probability_{n_years}-year_{info.filestem(mask)}.png",
         **plot_kwargs,
     )
 
 
-def plot_new_record_probability_empirical(info, ds_obs, ds, time_agg, ari=10, mask=None):
+def new_record_probability_empirical(
+    da, obs_da, n_years, time_agg, time_dim="time", init_dim="init_date"
+):
+    """Calculate the empirical probability of exceeding a level in a given period."""
+    record = obs_da.reduce(func_dict[time_agg], dim="time")
+
+    # Test if the obs and model data is on the same grid
+    if not all(([da[dim].equals(obs_da[dim]) for dim in ["lat", "lon"]])):
+        record = general_utils.regrid(record, da)
+
+    # Select the latest ari years of data (excluding years that start after last year of init_dim)
+    max_year = da[init_dim].dt.year.max().load()
+    min_year = max_year - n_years
+    da_subset = da.where(
+        (da.time.dt.year.load() > min_year) & (da.time.dt.year.load() <= max_year),
+        drop=True,
+    )
+    da_subset = da_subset.dropna(dim=time_dim, how="all")
+    da_count = (da_subset > record).sum(dim=time_dim)
+    annual_probability = da_count / da_subset[time_dim].size
+    cumulative_probability = 1 - (1 - annual_probability) ** n_years
+    return da_subset, cumulative_probability
+
+
+def plot_new_record_probability_empirical(
+    info, obs_ds, ds, time_agg, n_years=10, mask=None
+):
     """Plot map of the probability of breaking the obs record in the next X years.
 
     Parameters
     ----------
     info : Dataset
         Dataset information
-    ds_obs : xarray.Dataset
+    obs_ds : xarray.Dataset
         Observational dataset
     ds : xarray.Dataset, optional
         Model dataset
     time_agg : {"mean", "median", "maximum", "minimum", "sum"}
         Time aggregation function name
-    ari : int, default 10
+    n_years : int, default 10
         Return period in years
     mask : xarray.DataArray, default None
         Show model similarity stippling mask
+
     Notes
     -----
     * empirical based probability - use last 10 years of model data % that pass
     threshold (excluding unsampled final years)
     """
 
-    record = ds_obs[info.var].reduce(func_dict[time_agg], dim="time")
-    if info.is_model():
-        record = general_utils.regrid(record, ds[info.var])
-    # Select the latest ari years of data (excluding years that start after last year of init_date)
-    max_year = ds.init_date.dt.year.max().load()
-    min_year = max_year - ari
-    ds_subset = ds.where(
-        (ds.time.dt.year.load() > min_year) & (ds.time.dt.year.load() <= max_year),
-        drop=True,
+    da_subset, cumulative_probability = new_record_probability_empirical(
+        ds[info.var], obs_ds[info.var], n_years, time_agg, time_dim=info.time_dim
     )
-    ds_subset = ds_subset.dropna(dim=info.time_dim, how="all")
-    ds_count = (ds_subset[info.var] > record).sum(dim=info.time_dim)
-    annual_probability = ds_count / ds_subset[info.time_dim].size
-    cumulative_probability = 1 - (1 - annual_probability) ** ari
-    baseline = f"{ds_subset.time.dt.year.min().item() - 1} to {ds_subset.time.dt.year.max().item()}"
+
+    baseline = f"{da_subset.time.dt.year.min().item() - 1} to {da_subset.time.dt.year.max().item()}"
     # Convert to percentage
     fig, ax = plot_acs_hazard(
         data=cumulative_probability * 100,
         stippling=mask,
         agcd_mask=info.agcd_mask,
-        title=f"Empirical probability of\nrecord breaking {info.metric}\nin the next {ari} years",
+        title=f"Empirical probability of\nrecord breaking {info.metric}\nin the next {n_years} years",
         baseline=baseline,
         cmap=plt.cm.BuPu,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
         cbar_label="Probability [%]",
         dataset_name=info.long_name_with_obs,
-        outfile=f"{info.fig_dir}/new_record_probability_{ari}-year_empirical_{info.filestem(mask)}.png",
+        outfile=f"{info.fig_dir}/new_record_probability_{n_years}-year_empirical_{info.filestem(mask)}.png",
         **plot_kwargs,
     )
 
@@ -969,7 +1049,10 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
     names = [f for f in names if "combined" not in f]
 
     # Sort filenames into groups that start with the same names
-    fig = [np.array([f for f in files if f.stem.startswith(f"{prefix}_{metric}")]) for prefix in names]
+    fig = [
+        np.array([f for f in files if f.stem.startswith(f"{prefix}_{metric}")])
+        for prefix in names
+    ]
 
     # Filter out bias correct or masked versions of the figures
     for i, prefix in enumerate(names):
@@ -978,13 +1061,21 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
                 # Keep only original or bias-corrected versions of the figures
 
                 # BC and obs
-                fig[i] = [f for f in fig[i] if (bc in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)]
+                fig[i] = [
+                    f
+                    for f in fig[i]
+                    if (bc in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)
+                ]
         else:
             fig[i] = [f for f in fig[i] if "bias-corrected" not in f.stem]
 
         # Keep only masked versions of the figures
         if any(["masked" in f.stem for f in fig[i]]):
-            fig[i] = [f for f in fig[i] if ("masked" in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)]
+            fig[i] = [
+                f
+                for f in fig[i]
+                if ("masked" in f.stem) or (f"{prefix}_{metric}_{obs_name}" in f.stem)
+            ]
         # Drop any drop_max versions of the figures
         if any(["drop_max" in f.stem for f in fig[i]]):
             fig[i] = [f for f in fig[i] if "drop_max" not in f.stem]
@@ -993,9 +1084,9 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
             # Add obs max to subample
             fig[i] = [list(fig_dir.glob(f"maximum_{metric}_{obs_name}*.png"))[0], *fig[i]]
 
-        # if len(fig[i]) == n_models:
-        #     # Model obs to end
-        #     fig[i] = [*fig[i][1:], fig[i][0]]
+        if len(fig[i]) == n_models:
+            # Model obs to end
+            fig[i] = [*fig[i][1:], fig[i][0]]
 
     # For each file group, combine the images into a single figure
     for i, s in enumerate(fig):

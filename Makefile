@@ -6,11 +6,11 @@ DASK_CONFIG=/g/data/xv83/unseen-projects/code/dask_local.yml
 ENV_DIR?=/g/data/xv83/unseen-projects/unseen_venv
 FIG_DIR?=${PROJECT_DIR}/figures
 NOTEBOOK_IN_DIR?=/g/data/xv83/unseen-projects/code
-NOTEBOOK_OUT_DIR?=/g/data/xv83/unseen-projects/code
-OBS_LABEL?=OBS_DATASET
-GEV_TEST?=bic
-FITSTART?=LMM
+NOTEBOOK_OUT_DIR?=/g/data/xv83/unseen-projects/code\
 OBS_LABEL?=${OBS_DATASET}
+
+GEV_TEST?=lrt
+FITSTART?=LMM
 
 FILEIO=${ENV_DIR}/bin/fileio
 PAPERMILL=${ENV_DIR}/bin/papermill
@@ -62,6 +62,10 @@ GEV_BEST_OBS_DROP_MAX=${PROJECT_DIR}/data/gev_params_nonstationary_${GEV_TEST}_$
 GEV_BEST=${PROJECT_DIR}/data/gev_params_nonstationary_${GEV_TEST}_${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
 GEV_BEST_ADDITIVE_BC=${PROJECT_DIR}/data/gev_params_nonstationary_${GEV_TEST}_${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
 GEV_BEST_MULTIPLICATIVE_BC=${PROJECT_DIR}/data/gev_params_${GEV_TEST}_${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-multiplicative.nc
+
+## print all local variables (for importing variables in py scripts)
+print_file_vars :
+	$(foreach v, $(.VARIABLES), $(if $(filter file,$(origin $(v))), $(info $(v)=$($(v))))) 
 
 ## metric-obs : calculate the metric in observations
 metric-obs : ${METRIC_OBS}
@@ -155,17 +159,17 @@ ${GEV_STATIONARY_OBS_DROP_MAX} : ${METRIC_OBS}
 ## Stationary GEV parameters for model data
 gev-params-stationary : ${GEV_STATIONARY}
 ${GEV_STATIONARY} : ${METRIC_FCST}
-	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --stack_dims --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Stationary GEV parameters for additive bias-corrected model dataa
 gev-params-stationary-additive-bias : ${GEV_STATIONARY_ADDITIVE_BC}
 ${GEV_STATIONARY_ADDITIVE_BC} : ${METRIC_FCST_ADDITIVE_BC}
-	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --stack_dims --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Stationary GEV parameters for multiplicative bias-corrected model data
 gev-params-stationary-multiplicative-bias : ${GEV_STATIONARY_MULTIPLICATIVE_BC}
 ${GEV_STATIONARY_MULTIPLICATIVE_BC} : ${METRIC_FCST_MULTIPLICATIVE_BC}
-	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --stationary ${GEV_STATIONARY_OPTIONS} --stack_dims --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Non-stationary GEV parameters for obs data
 gev-params-nonstationary-obs : ${GEV_NONSTATIONARY_OBS}
@@ -180,17 +184,17 @@ ${GEV_NONSTATIONARY_OBS_DROP_MAX} : ${METRIC_OBS}
 ## Non-stationary GEV parameters for model data
 gev-params-nonstationary : ${GEV_NONSTATIONARY}
 ${GEV_NONSTATIONARY} : ${METRIC_FCST}
-	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --stack_dims --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Non-stationary GEV parameters for additive bias-corrected model data
 gev-params-nonstationary-additive-bias : ${GEV_NONSTATIONARY_ADDITIVE_BC}
 ${GEV_NONSTATIONARY_ADDITIVE_BC} : ${METRIC_FCST_ADDITIVE_BC}
-	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --stack_dims --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Non-stationary GEV parameters for multiplicative bias-corrected model data
 gev-params-nonstationary-multiplicative-bias : ${GEV_NONSTATIONARY_MULTIPLICATIVE_BC}
 ${GEV_NONSTATIONARY_MULTIPLICATIVE_BC} : ${METRIC_FCST_MULTIPLICATIVE_BC}
-	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --stack_dims --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Best GEV parameters for obs data
 gev-params-best-obs : ${GEV_BEST_OBS}
@@ -205,17 +209,18 @@ ${GEV_BEST_OBS_DROP_MAX} : ${METRIC_OBS}
 ## Best GEV parameters for model data
 gev-params-best : ${GEV_BEST}
 ${GEV_BEST} : ${METRIC_FCST}
-	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --pick_best_model ${GEV_TEST} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --stack_dims --pick_best_model ${GEV_TEST} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Best GEV parameters for additive bias-corrected model data
 gev-params-best-additive-bias : ${GEV_BEST_ADDITIVE_BC}
 ${GEV_BEST_ADDITIVE_BC} : ${METRIC_FCST_ADDITIVE_BC}
-	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --pick_best_model ${GEV_TEST} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --stack_dims --pick_best_model ${GEV_TEST} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
 
 ## Best GEV parameters for multiplicative bias-corrected model data
 gev-params-best-multiplicative-bias : ${GEV_BEST_MULTIPLICATIVE_BC}
 ${GEV_BEST_MULTIPLICATIVE_BC} : ${METRIC_FCST_MULTIPLICATIVE_BC}
-	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --pick_best_model ${GEV_TEST} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+	${EVA} $< ${VAR} $@ --nonstationary ${GEV_NONSTATIONARY_OPTIONS} --stack_dims --pick_best_model ${GEV_TEST} --min_lead ${INDEPENDENCE_FILE} ${MIN_IND_LEAD_OPTIONS}
+
 
 ## Combined targets
 moments : ${MOMENTS_ADDITIVE_BC_PLOT} ${MOMENTS_MULTIPLICATIVE_BC_PLOT} ${MOMENTS_RAW_PLOT}
@@ -232,11 +237,11 @@ ${NOTEBOOK_OUT_DIR}/analysis_${MODEL}.ipynb : ${NOTEBOOK_IN_DIR}/analysis.ipynb 
 # ${METRIC_OBS} ${METRIC_FCST} ${METRIC_FCST_ADDITIVE_BC} ${METRIC_FCST_MULTIPLICATIVE_BC} ${SIMILARITY_FILE} ${SIMILARITY_ADDITIVE_BC} ${SIMILARITY_MULTIPLICATIVE_BC} ${INDEPENDENCE_FILE} ${SIMILARITY_FILE} ${SIMILARITY_ADDITIVE_BC_FILE} ${SIMILARITY_MULTIPLICATIVE_BC_FILE} ${GEV_NONSTATIONARY} ${GEV_NONSTATIONARY_ADDITIVE_BC} ${GEV_NONSTATIONARY_MULTIPLICATIVE_BC} ${GEV_BEST} ${GEV_BEST_ADDITIVE_BC} ${GEV_BEST_MULTIPLICATIVE_BC}
 metric-forecast-spatial-analysis : ${NOTEBOOK_OUT_DIR}/spatial_analysis_${METRIC}_${MODEL}.ipynb 
 ${NOTEBOOK_OUT_DIR}/spatial_analysis_${METRIC}_${MODEL}.ipynb : ${NOTEBOOK_IN_DIR}/spatial_analysis.ipynb 
-	${PAPERMILL} $< $@ -p model_name ${MODEL} -p metric ${METRIC} -p var ${VAR} -p obs_name ${OBS_LABEL} -p reference_time_period '${REFERENCE_TIME_PERIOD}' -p time_agg ${TIME_AGG} -p covariate_base ${GEV_COVARIATE_BASE} -p gev_trend_period ${GEV_TREND_PERIOD} -p plot_dict ${PLOT_DICT} -p fig_dir ${FIG_DIR} -p plot_additive_bc ${PLOT_ADDITIVE_BC} -p plot_multiplicative_bc ${PLOT_MULTIPLICATIVE_BC} -p shapefile ${SHAPEFILE} -p shape_overlap ${SHAPE_OVERLAP} -p obs_file ${METRIC_OBS} -p model_file ${METRIC_FCST} -p model_add_bc_file ${METRIC_FCST_ADDITIVE_BC} -p model_mulc_bc_file ${METRIC_FCST_MULTIPLICATIVE_BC} -p independence_file ${INDEPENDENCE_FILE} -p independence_plot ${INDEPENDENCE_PLOT} -p min_lead_spatial_agg ${MIN_LEAD_SHAPE_SPATIAL_AGG} -p similarity_raw_file ${SIMILARITY_FILE} -p similarity_add_bc_file ${SIMILARITY_ADDITIVE_BC_FILE} -p similarity_mulc_bc_file ${SIMILARITY_MULTIPLICATIVE_BC_FILE} -p similarity_raw_plot ${SIMILARITY_PLOT} -p similarity_add_bc_plot ${SIMILARITY_ADDITIVE_BC_PLOT} -p similarity_mulc_bc_plot ${SIMILARITY_MULTIPLICATIVE_BC_PLOT} -p gev_params_nonstationary_file ${GEV_NONSTATIONARY} -p gev_params_nonstationary_add_bc_file ${GEV_NONSTATIONARY_ADDITIVE_BC} -p gev_params_nonstationary_mulc_bc_file ${GEV_NONSTATIONARY_MULTIPLICATIVE_BC} -p gev_params_best_file ${GEV_BEST} -p gev_params_best_add_bc_file ${GEV_BEST_ADDITIVE_BC} -p gev_params_best_mulc_bc_file ${GEV_BEST_MULTIPLICATIVE_BC}
+	${PAPERMILL} $< $@ -p model_name ${MODEL} -p metric ${METRIC} -p var ${VAR} -p obs_name ${OBS_LABEL} -p reference_time_period '${REFERENCE_TIME_PERIOD}' -p time_agg ${TIME_AGG} -p covariate_base ${COVARIATE_BASE} -p gev_trend_period ${GEV_TREND_PERIOD} -p plot_dict ${PLOT_DICT} -p fig_dir ${FIG_DIR} -p plot_additive_bc ${PLOT_ADDITIVE_BC} -p plot_multiplicative_bc ${PLOT_MULTIPLICATIVE_BC} -p shapefile ${SHAPEFILE} -p shape_overlap ${SHAPE_OVERLAP} -p obs_file ${METRIC_OBS} -p model_file ${METRIC_FCST} -p model_add_bc_file ${METRIC_FCST_ADDITIVE_BC} -p model_mulc_bc_file ${METRIC_FCST_MULTIPLICATIVE_BC} -p independence_file ${INDEPENDENCE_FILE} -p independence_plot ${INDEPENDENCE_PLOT} -p min_lead_spatial_agg ${MIN_LEAD_SHAPE_SPATIAL_AGG} -p similarity_raw_file ${SIMILARITY_FILE} -p similarity_add_bc_file ${SIMILARITY_ADDITIVE_BC_FILE} -p similarity_mulc_bc_file ${SIMILARITY_MULTIPLICATIVE_BC_FILE} -p similarity_raw_plot ${SIMILARITY_PLOT} -p similarity_add_bc_plot ${SIMILARITY_ADDITIVE_BC_PLOT} -p similarity_mulc_bc_plot ${SIMILARITY_MULTIPLICATIVE_BC_PLOT} -p gev_params_nonstationary_file ${GEV_NONSTATIONARY} -p gev_params_nonstationary_add_bc_file ${GEV_NONSTATIONARY_ADDITIVE_BC} -p gev_params_nonstationary_mulc_bc_file ${GEV_NONSTATIONARY_MULTIPLICATIVE_BC} -p gev_params_best_file ${GEV_BEST} -p gev_params_best_add_bc_file ${GEV_BEST_ADDITIVE_BC} -p gev_params_best_mulc_bc_file ${GEV_BEST_MULTIPLICATIVE_BC}
 
 metric-obs-spatial-analysis : ${NOTEBOOK_OUT_DIR}/spatial_analysis_${METRIC}_${OBS_DATASET}.ipynb ${METRIC_OBS} ${GEV_NONSTATIONARY_OBS} ${GEV_NONSTATIONARY_OBS_DROP_MAX}
 ${NOTEBOOK_OUT_DIR}/spatial_analysis_${METRIC}_${OBS_DATASET}.ipynb : ${NOTEBOOK_IN_DIR}/spatial_obs.ipynb
-	${PAPERMILL} $< $@ -p obs_name ${OBS_LABEL} -p metric ${METRIC} -p var ${VAR} -p reference_time_period '${REFERENCE_TIME_PERIOD}' -p time_agg ${TIME_AGG} -p covariate_base ${GEV_COVARIATE_BASE} -p gev_trend_period ${GEV_TREND_PERIOD} -p plot_dict ${PLOT_DICT} -p fig_dir ${FIG_DIR} -p obs_file ${METRIC_OBS} -p gev_params_nonstationary_file ${GEV_NONSTATIONARY_OBS} -p gev_params_nonstationary_drop_max_file ${GEV_NONSTATIONARY_OBS_DROP_MAX} -p gev_params_best_file ${GEV_BEST_OBS} -p shapefile ${SHAPEFILE} -p shape_overlap ${SHAPE_OVERLAP}
+	${PAPERMILL} $< $@ -p obs_name ${OBS_LABEL} -p metric ${METRIC} -p var ${VAR} -p reference_time_period '${REFERENCE_TIME_PERIOD}' -p time_agg ${TIME_AGG} -p covariate_base ${COVARIATE_BASE} -p gev_trend_period ${GEV_TREND_PERIOD} -p plot_dict ${PLOT_DICT} -p fig_dir ${FIG_DIR} -p obs_file ${METRIC_OBS} -p gev_params_nonstationary_file ${GEV_NONSTATIONARY_OBS} -p gev_params_nonstationary_drop_max_file ${GEV_NONSTATIONARY_OBS_DROP_MAX} -p gev_params_best_file ${GEV_BEST_OBS} -p shapefile ${SHAPEFILE} -p shape_overlap ${SHAPE_OVERLAP}
 
 .PHONY: help moments
 
