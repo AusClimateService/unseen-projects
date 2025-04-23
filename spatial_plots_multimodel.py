@@ -32,7 +32,7 @@ from unseen import fileio, time_utils, eva, general_utils
 from unseen.stability import statistic_by_lead_confidence_interval
 
 
-from acs_plotting_maps import cmap_dict, tick_dict, regions_dict #noqa
+from acs_plotting_maps import cmap_dict, tick_dict, regions_dict  # noqa
 from spatial_plots import (
     InfoSet,
     func_dict,
@@ -71,6 +71,7 @@ models = np.array(
 # ----------------------------------------------------------------------------
 # Generic plotting functions
 # ----------------------------------------------------------------------------
+
 
 def map_subplot(
     fig,
@@ -222,7 +223,6 @@ def add_shared_colorbar(
                     (ticks[i + 1] + ticks[i]) / 2 for i in range(len(ticks) - 1)
                 ]
 
-
     cbar = fig.colorbar(cs, ax=ax, orientation=orientation, ticks=ticks, **kwargs)
 
     if ticklabels is not None:
@@ -323,7 +323,15 @@ def get_makefile_vars(
     return var_dict
 
 
-def open_model_dataset(kws, bc=None, alpha=0.05, time_dim = "time", init_dim = "init_date", lead_dim = "lead_time",ensemble_dim = "ensemble"):
+def open_model_dataset(
+    kws,
+    bc=None,
+    alpha=0.05,
+    time_dim="time",
+    init_dim="init_date",
+    lead_dim="lead_time",
+    ensemble_dim="ensemble",
+):
     """Open, format and combine relevant model data."""
 
     time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
@@ -431,6 +439,10 @@ def subset_obs_dataset(obs_ds, ds):
     obs_ds = obs_ds.dropna("time", how="all")
     return obs_ds
 
+# def multimodel_median(da_list):
+#     # Regrid to commonn 1x1 degree grid
+#     # create a common grid
+#     common_grid = xr.Dataset(
 
 def get_stability_ci(da, method, confidence_level=0.99, n_resamples=1000, aep=1):
     """Get the confidence interval of a statistic for a lead time-sized sample.
@@ -480,6 +492,7 @@ def get_stability_ci(da, method, confidence_level=0.99, n_resamples=1000, aep=1)
 # Plotting functions
 # ----------------------------------------------------------------------------
 
+
 def plot_time_agg(info, var, time_agg):
     """Plot time-aggregated data for each model and observation dataset."""
 
@@ -527,9 +540,25 @@ def plot_time_agg_subsampled(info, obs, time_agg="maximum", resamples=1000):
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
-    da_list = []
 
+    # Show obs time agg (not subsampled)
+    i = 0
+    da_obs = info[obs].ds[var].reduce(func_dict[time_agg], dim=info[obs].time_dim)
+    fig, ax[i], cs = map_subplot(
+        fig,
+        ax[i],
+        da_obs,
+        title=f"{letters[i]} {info[obs].name} {info[obs].metric} {time_agg}",
+        cbar=False,
+        stippling=info[obs].pval_mask,
+        cmap=info[obs].cmap,
+        ticks=info[obs].ticks,
+        cbar_extend=info[obs].cbar_extend,
+    )
+
+    da_list = []
     for i, m in enumerate(models):
+        i += 1
         da = resample_subsample(info[m], info[m].ds, time_agg, n_obs_samples, resamples)
         da_list.append(da)
         fig, ax[i], cs = map_subplot(
@@ -543,21 +572,6 @@ def plot_time_agg_subsampled(info, obs, time_agg="maximum", resamples=1000):
             ticks=info[m].ticks,
             cbar_extend=info[m].cbar_extend,
         )
-
-    # Show obs time agg (not subsampled)
-    i += 1
-    da_obs = info[obs].ds[var].reduce(func_dict[time_agg], dim=info[obs].time_dim)
-    fig, ax[i], cs = map_subplot(
-        fig,
-        ax[i],
-        da_obs,
-        title=f"{letters[i]} {info[obs].name} {info[obs].metric} {time_agg}",
-        cbar=False,
-        stippling=info[obs].pval_mask,
-        cmap=info[obs].cmap,
-        ticks=info[obs].ticks,
-        cbar_extend=info[obs].cbar_extend,
-    )
 
     # Hide empty subplots
     for a in [a for a in ax if not a.collections]:
@@ -579,7 +593,7 @@ def plot_time_agg_subsampled(info, obs, time_agg="maximum", resamples=1000):
     plt.savefig(outfile, bbox_inches="tight")
     plt.show()
 
-    # Plot anomaly of subsampled data minus regridd obs data
+    # Plot anomaly of subsampled data minus regrided obs data
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
     for i, m in enumerate(models):
@@ -638,9 +652,9 @@ def plot_obs_anom(
         if ticks is not None:
             kwargs["ticks"] = ticks
 
-        fig, ax[i], cs = map_subplot(
+        fig, ax[i + 1], cs = map_subplot(
             fig,
-            ax[i],
+            ax[i + 1],
             anom,
             title=f"{letters[i]} {info[m].title_name}",
             cbar=False,
@@ -861,9 +875,9 @@ def plot_min_independent_lead(info):
         da = info[m].ds
         for month in da.month.values:
             dx = da.min_lead.sel(month=month)
-            fig, ax[i], cs = map_subplot(
+            fig, ax[i + 1], cs = map_subplot(
                 fig,
-                ax[i],
+                ax[i + 1],
                 dx,
                 title=f"{letters[i]} {info[m].name} ({calendar.month_name[month]} starts)",
                 cbar=False,
@@ -878,13 +892,13 @@ def plot_min_independent_lead(info):
             if "month" in min_lead_median.dims:
                 min_lead_median = min_lead_median.sel(month=month)
 
-            ax[i].text(
+            ax[i + 1].text(
                 0.05,
                 0.05,
                 f"median={min_lead_median.item() + 1:.0f}",
                 ha="left",
                 va="bottom",
-                transform=ax[i].transAxes,
+                transform=ax[i + 1].transAxes,
                 bbox=dict(
                     boxstyle="round,pad=0.3",
                     edgecolor="black",
@@ -961,7 +975,7 @@ def plot_aep_trend(info, covariates, aep=1, ticks=None):
     """Plot map of the change in AEP between two covariate (list) values."""
 
     ari = eva.aep_to_ari(aep)
-    ticks = info[m].ticks_anom if ticks is None else ticks
+    ticks = info[models[0]].ticks_anom if ticks is None else ticks
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
@@ -1011,9 +1025,9 @@ def plot_aep_empirical(info, var, aep=1):
         da = eva.get_empirical_return_level(
             info[m].ds[var], ari, core_dim=info[m].time_dim
         )
-        fig, ax[i], cs = map_subplot(
+        fig, ax[i + 1], cs = map_subplot(
             fig,
-            ax[i],
+            ax[i + 1],
             da,
             title=f"{letters[i]} {info[m].title_name}",
             cbar=False,
@@ -1101,9 +1115,9 @@ def plot_new_record_probability_empirical(info, var, time_agg, n_years=10):
             init_dim="init_date" if m != info[m].obs_name else "time",
         )
 
-        fig, ax[i], cs = map_subplot(
+        fig, ax[i + 1], cs = map_subplot(
             fig,
-            ax[i],
+            ax[i + 1],
             cumulative_probability * 100,
             title=f"{letters[i]} {info[m].title_name}",
             cbar=False,
@@ -1302,6 +1316,20 @@ if __name__ == "__main__":
 
     # Create nested dict of Infoset objects containing variables and datasets
     info = {}
+
+    info[obs] = InfoSet(
+        name=obs,
+        file=var_dict[obs]["metric_obs"],
+        obs_name=obs,
+        ds=dt[f"obs/{obs}"].ds,
+        obs_ds=dt[f"obs/{obs}"].ds,
+        bias_correction=bc,
+        fig_dir=fig_dir,
+        pval_mask=None,
+        filestem=filestem,  # Overrides filestem function
+        **plot_dict,
+    )
+
     for m in models:
         info[m] = InfoSet(
             name=m,
@@ -1315,18 +1343,7 @@ if __name__ == "__main__":
             filestem=filestem,  # Overrides filestem function
             **plot_dict,
         )
-    info[obs] = InfoSet(
-        name=obs,
-        file=var_dict[obs]["metric_obs"],
-        obs_name=obs,
-        ds=dt[f"obs/{obs}"].ds,
-        obs_ds=dt[f"obs/{obs}"].ds,
-        bias_correction=bc,
-        fig_dir=fig_dir,
-        pval_mask=None,
-        filestem=filestem,  # Overrides filestem function
-        **plot_dict,
-    )
+
 
     # Plots
     # Stability (don't plot for diff bc)
