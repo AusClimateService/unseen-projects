@@ -80,9 +80,9 @@ ${METRIC_OBS} :
 ## metric-forecast : calculate metric in forecast ensemble
 metric-forecast : ${METRIC_FCST}
 ${METRIC_FCST} : ${FCST_DATA}
-	cp job.sh job_${MODEL}.sh
-	echo "${FILEIO} $< $@ --forecast ${METRIC_OPTIONS} ${METRIC_OPTIONS_FCST} ${MODEL_IO_OPTIONS}" >> job_${MODEL}.sh
-	qsub job_${MODEL}.sh
+	cp job.sh job_${METRIC}_${MODEL}.sh
+	echo "${FILEIO} $< $@ --forecast ${METRIC_OPTIONS} ${METRIC_OPTIONS_FCST} ${MODEL_IO_OPTIONS}" >> job_${METRIC}_${MODEL}.sh
+	qsub job_${METRIC}_${MODEL}.sh
 
 ## independence-test : independence test for different lead times
 independence-test : ${INDEPENDENCE_FILE}
