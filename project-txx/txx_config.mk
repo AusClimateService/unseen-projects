@@ -33,8 +33,9 @@ MIN_IND_LEAD_OPTIONS=--min_lead_kwargs variables=min_lead shapefile=${SHAPEFILE}
 ## GEV distribution options
 FITSTART=LMM
 GEV_TEST=bic
-GEV_STATIONARY_OPTIONS=--fitstart ${FITSTART} --use_basinhopping --assert_good_fit --file_kwargs variables=${VAR} shapefile=${SHAPEFILE} shape_overlap=${SHAPE_OVERLAP}
-GEV_NONSTATIONARY_OPTIONS=--covariate "time.year" --fitstart ${FITSTART} --use_basinhopping --file_kwargs variables=${VAR} shapefile=${SHAPEFILE} shape_overlap=${SHAPE_OVERLAP}
+GEV_SHAPEFILE=${PROJECT_DIR}/shapefiles/australia_buffered_2deg.shp
+GEV_STATIONARY_OPTIONS=--fitstart ${FITSTART} --use_basinhopping --file_kwargs variables=${VAR} shapefile=${GEV_SHAPEFILE} shape_overlap=${SHAPE_OVERLAP}
+GEV_NONSTATIONARY_OPTIONS=--covariate "time.year" --fitstart ${FITSTART} --use_basinhopping --file_kwargs variables=${VAR} shapefile=${GEV_SHAPEFILE} shape_overlap=${SHAPE_OVERLAP}
 GEV_OBS_OPTIONS=--reference_time_period ${REFERENCE_TIME_PERIOD}
 
 ## Notebook options
@@ -45,7 +46,7 @@ COVARIATE_BASE=2025
 # Period for trend calculation (string converted to python)
 GEV_TREND_PERIOD='[1961, 2025]'
 # Dictionary of plot options for spatial analysis notebook (string converted to python)
-PLOT_DICT='dict(metric="TXx", var="${VAR}", var_name="Temperature", units="°C", units_label="Temperature [°C]", freq="${TIME_FREQ}", cmap=cmap_dict["ipcc_temp_seq"], cmap_anom=plt.cm.RdBu_r, ticks=np.arange(24, 58 + 2, 2), ticks_anom=np.arange(-8.5, 9.5, 1), ticks_anom_std=np.arange(-8.5, 9.5, 1), ticks_anom_pct=np.arange(-29, 31, 2), ticks_anom_ratio=np.arange(0.7, 1.35, 0.05), ticks_trend=np.arange(-4.75, 5, 0.5), ticks_param_trend={"location": np.arange(-0.6, 0.61, 0.1), "scale": np.arange(-0.12, 0.122, 0.02)}, cbar_extend="both", agcd_mask=False)'
+PLOT_DICT='dict(metric="TXx", var="${VAR}", var_name="Temperature", units="°C", units_label="Temperature [°C]", freq="${TIME_FREQ}", cmap=cmap_dict["ipcc_temp_seq"].reversed(), cmap_anom=plt.cm.RdBu_r, ticks=np.arange(24, 58 + 2, 2), ticks_anom=np.arange(-8.5, 9.5, 1), ticks_anom_std=np.arange(-8.5, 9.5, 1), ticks_anom_pct=np.arange(-29, 31, 2), ticks_anom_ratio=np.arange(0.675, 1.325, 0.05), ticks_trend=np.around(np.arange(-0.85, 0.95, 0.1), 2), ticks_param_trend={"location": np.arange(-0.6, 0.61, 0.1), "scale": np.arange(-0.12, 0.122, 0.02)}, cbar_extend="both", agcd_mask=False)'
 #  Plot additive/multiplicative bias corrected metric in spatial analysis notebook (True/False)#
 PLOT_ADDITIVE_BC=1
 PLOT_MULTIPLICATIVE_BC=0
