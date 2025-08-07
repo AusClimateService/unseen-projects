@@ -5,14 +5,14 @@ Notes
 -----
 * Slices obs_ds time period to match models
 * requires xarray>=2024.10.0, numpy<=2.1.0 (shapely issue?)
-* requires acs_plotting_maps
+* requires acs_plotting_maps, ia39 storage
 
 """
 
-import argparse
 import calendar
 from cartopy.crs import PlateCarree
 from cartopy.mpl.gridliner import LatitudeFormatter, LongitudeFormatter
+import cmocean
 import functools
 import matplotlib.pyplot as plt
 from matplotlib.colors import BoundaryNorm, LogNorm
@@ -24,10 +24,16 @@ import string
 import xarray as xr
 import xesmf as xe
 
+from acs_plotting_maps import (
+    cmap_dict,
+    tick_dict,
+    regions_dict,
+    crop_cmap_center,
+)  # noqa
 from unseen import fileio, time_utils, eva, general_utils
 from unseen.stability import statistic_by_lead_confidence_interval
 
-from acs_plotting_maps import cmap_dict, tick_dict, regions_dict  # noqa
+
 from spatial_plots import (
     InfoSet,
     func_dict,
@@ -35,33 +41,24 @@ from spatial_plots import (
     resample_subsample,
     nonstationary_new_record_probability,
     month_cmap,
+    month_cmap_alt,
     new_record_probability_empirical,
-)
+)  # noqa
+
 
 plt.rcParams["figure.figsize"] = [14, 10]
 plt.rcParams["figure.dpi"] = 300
 plt.rcParams["figure.constrained_layout.use"] = True
 plt.rcParams["contour.linewidth"] = 0.3
+plt.rcParams["hatch.color"] = "k"
+plt.rcParams["hatch.linewidth"] = 0.5
+plt.rcParams["xtick.major.size"] = 4.5
+plt.rcParams["xtick.minor.size"] = 3
+plt.rcParams["ytick.major.size"] = 4.5
+plt.rcParams["ytick.minor.size"] = 3
 
 # Subplot letter labels
 letters = [f"({i})" for i in string.ascii_letters]
-
-models = np.array(
-    [
-        "CAFE",
-        "BCC-CSM2-MR",
-        "CanESM5",
-        "CMCC-CM2-SR5",
-        "EC-Earth3",
-        "HadGEM3-GC31-MM",
-        "IPSL-CM6A-LR",
-        "MIROC6",
-        "MPI-ESM1-2-HR",
-        "MRI-ESM2-0",
-        "NorCPM1",
-    ]
-)
-
 
 # -------------------------------------------------------------------------
 # Generic plotting functions
@@ -74,6 +71,7 @@ def map_subplot(
     data,
     region="aus_states_territories",
     hatching=None,
+    hatching_color="k",
     title=None,
     ticks=None,
     ticklabels=None,
@@ -85,16 +83,26 @@ def map_subplot(
     cbar_kwargs=dict(fraction=0.05),
     mask_not_australia=True,
     xlim=(112.5, 154.3),
-    ylim=(-44.5, -9.8),
+    ylim=(-44.5, -9.6),
     xticks=np.arange(120, 155, 10),
     yticks=np.arange(-40, -0, 10),
+    contour=False,
+    vcentre=None,
+    **kwargs,
 ):
     """Plot 2D data on an Australia map with coastlines.
+
+    Parameters
+    ----------
+    fig : matplotlib figure
+    ax : matplotlib axes
+        Axes to plot on
+
 
     Returns
     -------
     fig : matplotlib figure
-    ax : cartopy.mpl.geocollection.GeoQuadMesh
+    ax :
     cs : cartopy.mpl.geocollection.GeoQuadMesh
 
     Example
@@ -104,25 +112,71 @@ def map_subplot(
         dims=["lat", "lon"],
         coords={"lat": np.linspace(-45, -10, 10), "lon": np.linspace(115, 155, 10)},
         )
-    fig, ax = plt.subplots(1, 1, figsize=(10, 7), subplot_kw=dict(projection=PlateCarree()))
-    fig, ax, cs = map_subplot(fig, ax, data, title="Random data", cmap="viridis")
+    fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection=PlateCarree()))
+    fig, ax, cs = map_subplot(fig, ax, data)
     """
 
     if title is not None:
         ax.set_title(title, loc="left", fontsize=12)
 
     ax.set_extent([*xlim, *ylim], crs=PlateCarree())
-    if ticks is not None:
-        if isinstance(ticks, (list, np.ndarray)):
-            # Stolen from acs_plotting_maps
-            if ticklabels is None or (len(ticklabels) == len(ticks) - 1):
-                norm = BoundaryNorm(ticks, cmap.N + 1, extend=extend)
-            else:
-                print("Not implemented yet")
 
-    cs = ax.pcolormesh(data.lon, data.lat, data, cmap=cmap, norm=norm)
+    # Stolen from acs_plotting_maps
+    if ticks is not None:
+        if ticklabels is not None and not isinstance(ticklabels, (list, np.ndarray)):
+            # Format tick labels
+            diff = np.diff(ticks)[0] / 2
+            ticklabels = np.array(ticks[:-1] + diff)
+            if (ticklabels.astype(int) == ticklabels).all():
+                ticklabels = ticklabels.astype(int)
+            if diff >= 1e-3:
+                ticklabels = np.around(ticklabels, 3)
+
+        if ticklabels is None or (len(ticklabels) == len(ticks) - 1):
+            # Middle or no ticklabels provided
+
+            norm = BoundaryNorm(ticks, cmap.N + 1, extend=extend)
+            if ticklabels is not None:
+                middle_ticks = [
+                    (ticks[i + 1] + ticks[i]) / 2 for i in range(len(ticks) - 1)
+                ]
+            else:
+                middle_ticks = []
+        else:
+            # Use ticks as labels between given ticks
+            middle_ticks = [
+                (ticks[i + 1] + ticks[i]) / 2 for i in range(len(ticks) - 1)
+            ]
+            outside_bound_first = [ticks[0] - (ticks[1] - ticks[0]) / 2]
+            outside_bound_last = [ticks[-1] + (ticks[-1] - ticks[-2]) / 2]
+            bounds = outside_bound_first + middle_ticks + outside_bound_last
+            norm = BoundaryNorm(bounds, cmap.N, extend="neither")
+
+    if vcentre is not None:
+        cmap = crop_cmap_center(cmap, ticks, vcentre, extend=extend)
+
+    cmap.set_bad("lightgrey")  # Set color for NaN values
+
+    if contour:
+        cs = ax.contourf(
+            data.lon,
+            data.lat,
+            data,
+            cmap=cmap,
+            norm=norm,
+            transform=PlateCarree(),
+            **kwargs,
+        )
+    else:
+        cs = ax.pcolormesh(data.lon, data.lat, data, cmap=cmap, norm=norm, **kwargs)
 
     if hatching is not None:
+        if hatching_color != "k":
+            plt.rcParams["hatch.linewidth"] = 0.7
+        else:
+            plt.rcParams["hatch.linewidth"] = 0.6
+        plt.rcParams["hatch.color"] = hatching_color
+
         ax = add_hatching(ax, hatching)
 
     if mask_not_australia:
@@ -148,13 +202,14 @@ def map_subplot(
 
 
 def add_hatching(ax, hatching, **kwargs):
-    """Add hatching to contour plot where hatching==True."""
+    """Add hatching to plot where hatching is True."""
+
     ax.contourf(
         hatching.lon,
         hatching.lat,
         hatching,
         alpha=0,
-        hatches=["", "xxxxx"],
+        hatches=["", "xxxx"],
         transform=PlateCarree(),
         **kwargs,
     )
@@ -171,15 +226,36 @@ def add_shared_colorbar(
     tick_interval=1,
     **kwargs,
 ):
-    """Add a shared colorbar to a figure with multiple subplots."""
-    norm = cs.norm
-    if ticks is None and hasattr(norm, "boundaries"):
-        ticks = norm.boundaries
-    if "extend" not in kwargs:
-        kwargs["extend"] = norm.extend
+    """Add a shared colorbar to a figure with multiple subplots.
+
+    Parameters
+    ----------
+    fig : matplotlib figure
+    ax : matplotlib axes
+        Axes to which the colorbar will be added (usually the last subplot)
+    cs : cartopy.mpl.geocollection.GeoQuadMesh
+        The GeoQuadMesh object to which the colorbar corresponds.
+    orientation : {"horizontal", "vertical"}, default="horizontal"
+        Orientation of the colorbar.
+    ticks : array-like, default=None
+        Ticks for the colorbar. If None, will use the boundaries of the norm.
+    ticklabels : array-like, default=None
+        Labels for the ticks. If None, will use the middle of the ticks.
+    tick_interval : int, default=1
+        Interval at which to show tick labels. For example, if 2, will show
+        every second label.
+    **kwargs : dict
+        Additional keyword arguments passed to `fig.colorbar`
+
+    Returns
+    -------
+    cbar : matplotlib colorbar
+        The colorbar object added to the figure
+    """
 
     # Set default colorbar parameters
-    kwargs["aspect"] = 32
+    if "aspect" not in kwargs:
+        kwargs["aspect"] = 32
     if "pad" not in kwargs and "shrink" not in kwargs:
         if orientation == "vertical":
             kwargs["pad"] = 0.03
@@ -188,41 +264,83 @@ def add_shared_colorbar(
             kwargs["pad"] = 0.02
             kwargs["shrink"] = 0.7
 
+    norm = kwargs.pop("norm", cs.norm)
+    if ticks is None and hasattr(norm, "boundaries"):
+        ticks = norm.boundaries
+    if "extend" not in kwargs:
+        kwargs["extend"] = norm.extend
+
     # Format ticks
     if ticks is not None:
+        diff = np.ediff1d(ticks) / 2
         if ticklabels is not None and not isinstance(ticklabels, (list, np.ndarray)):
-            ticklabels = np.array(ticks[:-1] + (np.diff(ticks)[0] / 2))
+            # Format tick labels
+            ticklabels = np.array(ticks[:-1] + diff)
             if (ticklabels.astype(int) == ticklabels).all():
                 ticklabels = ticklabels.astype(int)
+            if np.all(diff) >= 1e-3:
+                ticklabels = np.around(ticklabels, 3)
 
-        # Stolen from acs_plotting_maps
-        if ticklabels is None or (len(ticklabels) == len(ticks) - 1):
-            if ticklabels is not None:
-                middle_ticks = [
-                    (ticks[i + 1] + ticks[i]) / 2 for i in range(len(ticks) - 1)
-                ]
-            else:
-                middle_ticks = []
+        if ticklabels is None:
+            middle_ticks = []
         else:
-            middle_ticks = [
-                (ticks[i + 1] + ticks[i]) / 2 for i in range(len(ticks) - 1)
-            ]
+            middle_ticks = np.array(ticks[:-1]) + diff
+            if np.all(diff) >= 1e-3:  # Round to 3 decimal places
+                middle_ticks = np.around(middle_ticks, 3)
 
-    cbar = fig.colorbar(cs, ax=ax, orientation=orientation, ticks=ticks, **kwargs)
+    cbar = fig.colorbar(
+        cs, ax=ax, orientation=orientation, ticks=ticks, norm=norm, **kwargs
+    )
 
     if ticklabels is not None:
+        if len(ticks) != len(ticklabels):
+            ticks = middle_ticks
         if orientation == "vertical":
-            cbar.ax.set_yticks(middle_ticks, ticklabels)
+            cbar.ax.set_yticks(ticks, ticklabels)
         else:
-            cbar.ax.set_xticks(middle_ticks, ticklabels)
+            cbar.ax.set_xticks(ticks, ticklabels)
+        # cbar.update_ticks()
+        cbar.ax.minorticks_off()
 
-    # Hide every other tick label
-    axis = "y" if orientation == "vertical" else "x"
-    labels = eval(f"cbar.ax.{axis}axis.get_ticklabels()")
-    for i, label in enumerate(labels):
-        # Only show labels at specific interval
-        if i % tick_interval != 0:
-            label.set_visible(False)
+    # Hide colorbar ticks at specific intervals
+    if tick_interval > 1:
+        axis = "y" if orientation == "vertical" else "x"
+        labels = eval(f"cbar.ax.{axis}axis.get_ticklabels()")
+
+        for i, label in enumerate(labels):
+            # Hide labels
+            if i % tick_interval != 0:
+                label.set_visible(False)
+
+    return cbar
+
+
+def add_inset_colorbar(fig, ax, cs, label, tick_size=8, label_size=9):
+    """Add a small colorbar inside the lower left of a subplot.
+
+    Parameters
+    ----------
+    fig : matplotlib figure
+    ax : matplotlib axes
+    cs : cartopy.mpl.geocollection.GeoQuadMesh
+    label : str
+        Label for the colorbar
+    tick_size : int, default=8
+        Font size of the tick labels
+    label_size : int, default=9
+        Font size of the colorbar label
+
+    Returns
+    -------
+    cbar : matplotlib colorbar
+        The colorbar object
+    """
+
+    # Create an inset axes for the colorbar [x0, y0, width, height]
+    cax = ax.inset_axes([0.04, 0.1, 0.7, 0.05])
+    cbar = fig.colorbar(cs, cax=cax, orientation="horizontal")
+    cbar.ax.set_title(label, size=label_size)
+    cbar.ax.tick_params(labelsize=tick_size)
     return cbar
 
 
@@ -246,6 +364,7 @@ def plot_region_border(ax, region, **kwargs):
 
 def plot_region_mask(ax, region, **kwargs):
     """Mask data outside of the region."""
+
     facecolor = kwargs.pop("facecolor", "white")
     ax.add_geometries(
         region,
@@ -258,6 +377,8 @@ def plot_region_mask(ax, region, **kwargs):
 
 
 def extra_subplot_formatting(ax):
+    """Format subplots with common settings."""
+
     # Increase border width of observations & multi-model subplot
     [a.set_linewidth(2) for a in ax[0].spines.values()]
     [a.set_edgecolor("midnightblue") for a in ax[0].spines.values()]
@@ -305,7 +426,7 @@ def add_aus_state_labels(ax, **kwargs):
 
 
 def get_makefile_vars(
-    metric="txx", obs="AGCD", obs_config_file="AGCD-CSIRO_r05_tasmax_config.mk"
+    models, metric="txx", obs="AGCD", obs_config_file="AGCD-CSIRO_r05_tasmax_config.mk"
 ):
     """Create nested dictionary of observation and model variables used in Makefile.
 
@@ -376,6 +497,7 @@ def open_model_dataset(
         _bc = ""
     metric_fcst = kws[f"metric_fcst{_bc}"]
     similarity_file = str(kws[f"similarity{_bc}_file"])
+    # gev_params_stationary_file = kws[f"gev_stationary{_bc}"]
     gev_params_nonstationary_file = kws[f"gev_nonstationary{_bc}"]
 
     model_ds = fileio.open_dataset(metric_fcst)
@@ -383,7 +505,6 @@ def open_model_dataset(
     # Similarity test (for hatching)
     similarity_ds = fileio.open_dataset(similarity_file)
     ds_independence = xr.open_dataset(kws["independence_file"], decode_times=time_coder)
-    # Non-stationary GEV parameters
     dparams_ns = xr.open_dataset(gev_params_nonstationary_file)[var]
 
     # Calculate stability confidence intervals (for median and 1% AEP)
@@ -438,6 +559,7 @@ def open_model_dataset(
     model_ds_stacked["pval_mask"] = (
         similarity_ds[f"{kws['similarity_test']}_pval"] <= alpha
     )
+    # model_ds_stacked["dparams"] = dparams
     model_ds_stacked["dparams_ns"] = dparams_ns
     model_ds_stacked["covariate"] = model_ds_stacked[time_dim].dt.year
 
@@ -454,7 +576,9 @@ def open_model_dataset(
 def open_obs_dataset(var_dict, obs):
     """Open metric observational datasets."""
     obs_ds = fileio.open_dataset(var_dict[obs]["metric_obs"])
+    # gev_file = Path(var_dict[obs]["gev_stationary_obs"])
     ns_gev_file = Path(var_dict[obs]["gev_nonstationary_obs"])
+    # dparams = xr.open_dataset(gev_file)[var_dict[obs]["var"]]
     dparams_ns = xr.open_dataset(ns_gev_file)[var_dict[obs]["var"]]
 
     if var_dict[obs]["reference_time_period"] is not None:
@@ -467,6 +591,10 @@ def open_obs_dataset(var_dict, obs):
     )
     obs_ds["event_time"] = (obs_ds.event_time.dims, event_times)
     obs_ds["dparams_ns"] = dparams_ns
+    if "covariate" in dparams_ns:
+        obs_ds["covariate"] = dparams_ns.covariate
+    else:
+        obs_ds["covariate"] = obs_ds.time.dt.year
     return obs_ds
 
 
@@ -478,13 +606,17 @@ def subset_obs_dataset(obs_ds, ds):
     return obs_ds
 
 
-def shared_grid_regridder(ds, method="conservative"):
+def shared_grid_regridder(ds, res=1, method="conservative"):
     """Add dataset-specific regridder to each InfoSet instance in info."""
     # Create a 1x1 degree grid over Australia
     grid = xr.Dataset(
         {
-            "lat": (["lat"], np.arange(-44, -11, 1.0), {"units": "degrees_north"}),
-            "lon": (["lon"], np.arange(112, 155, 1.0), {"units": "degrees_east"}),
+            "lat": (
+                ["lat"],
+                np.arange(-44, -9.5 + res, res),
+                {"units": "degrees_north"},
+            ),
+            "lon": (["lon"], np.arange(112, 154 + res, res), {"units": "degrees_east"}),
         }
     )
     regridder = xe.Regridder(ds, grid, method)
@@ -492,7 +624,7 @@ def shared_grid_regridder(ds, method="conservative"):
     return regridder
 
 
-def multimodel_avg(info, da_list, func=np.median, **kwargs):
+def multimodel_avg(info, models, da_list, func=np.median, **kwargs):
     """Regrid arrays to common grid and return the multi-model average."""
 
     dr_list = []
@@ -550,6 +682,68 @@ def get_stability_ci(da, method, confidence_level=0.99, n_resamples=1000, aep=1)
     return ci
 
 
+def get_gev_mask(info, m, var_dict, test="lrt"):
+    """Mask where stationary is better than nonstationary GEV model."""
+
+    var = var_dict[m]["var"]
+
+    if info[m].is_model():
+        if info[m].bias_correction not in ["", None]:
+            _bc = f"_{info[m].bias_correction}_bc"
+        else:
+            _bc = ""
+        gev_params_stationary_file = var_dict[m][f"gev_stationary{_bc}"]
+        covariate = info[m].ds["covariate"]
+    else:
+        gev_params_stationary_file = var_dict[m]["gev_stationary_obs"]
+        covariate = info[m].obs_ds.time.dt.year
+
+    dparams = xr.open_dataset(gev_params_stationary_file)[var]
+
+    nll = xr.apply_ufunc(
+        eva._gev_nllf,
+        dparams,
+        info[m].ds[var].sel(lat=dparams.lat, lon=dparams.lon),
+        input_core_dims=[["dparams"], [info[m].time_dim]],
+        output_core_dims=[[]],
+        vectorize=True,
+        dask="parallelized",
+        dask_gufunc_kwargs=dict(meta=(np.ndarray(1, float),)),
+    )
+
+    # Negative log-likelihood of stationary and nonstationary models
+    nll_ns = xr.apply_ufunc(
+        eva._gev_nllf,
+        info[m].ds.dparams_ns,
+        info[m].ds[var],
+        covariate,
+        input_core_dims=[["dparams"], [info[m].time_dim], [info[m].time_dim]],
+        output_core_dims=[[]],
+        vectorize=True,
+        dask="parallelized",
+        dask_gufunc_kwargs=dict(meta=(np.ndarray(1, float),)),
+    )
+
+    # Check if the nonstationary model is preferred over the stationary model
+    result = xr.apply_ufunc(
+        eva.check_gev_relative_fit,
+        info[m].ds[var].sel(lat=dparams.lat, lon=dparams.lon),
+        nll,
+        nll_ns.sel(lat=dparams.lat, lon=dparams.lon),
+        input_core_dims=[[info[m].time_dim], [], []],
+        output_core_dims=[[]],
+        vectorize=True,
+        dask="parallelized",
+        kwargs=dict(test=test, alpha=0.05, n_params=[3, 5]),
+    )
+
+    # True where stationary model is preferred
+    result = np.logical_not(result)
+
+    # pvalue = eva.check_gev_fit(da, dparams, core_dim=["sample"], test="ks")
+    return result
+
+
 # ----------------------------------------------------------------------------
 # Plotting functions
 # ----------------------------------------------------------------------------
@@ -571,7 +765,7 @@ def plot_time_agg(info, var, time_agg, plot_dict):
     for i, m in enumerate(info.keys()):
 
         da = info[m].ds[var].reduce(func_dict[time_agg], dim=info[m].time_dim)
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)
 
@@ -586,7 +780,7 @@ def plot_time_agg(info, var, time_agg, plot_dict):
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig, ax[i], dm, title=f"{letters[i]} Multi-model median", **cbar_kwargs
     )
@@ -634,14 +828,10 @@ def plot_obs_anom(
         ticks=plot_dict["ticks"],
         extend=plot_dict["cbar_extend"],
     )
-
-    # Create an inset axes for the colorbar [x0, y0, width, height]
-    cax = ax[i].inset_axes([0.04, 0.1, 0.7, 0.05])
-    cbar = fig.colorbar(cs, cax=cax, orientation="horizontal")
-    cbar.ax.set_title(f"{plot_dict['metric']} [{info[obs].units}]")
+    cbar = add_inset_colorbar(fig, ax[i], cs, plot_dict["units_label"])
 
     da_list = []  # Store data arrays for the multi-model median
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         i += 2  # Leave ax[0-1] for obs & multi-model median
 
         da, kwargs = soft_record_metric(
@@ -665,11 +855,12 @@ def plot_obs_anom(
             cmap=kwargs["cmap"],
             ticks=kwargs["ticks"],
             extend=kwargs["cbar_extend"],
+            vcentre=kwargs.get("vcentre", None),
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
@@ -678,6 +869,7 @@ def plot_obs_anom(
         cmap=kwargs["cmap"],
         ticks=kwargs["ticks"],
         extend=kwargs["cbar_extend"],
+        vcentre=kwargs.get("vcentre", None),
     )
 
     kwargs["cbar_label"] = kwargs["cbar_label"].replace("\n", " ")
@@ -729,7 +921,9 @@ def plot_time_agg_subsampled(
 
     # Plot obs time agg (not subsampled)
     i = 0
-    da_obs = info[obs].ds[var].reduce(func_dict[time_agg], dim=info[obs].time_dim)
+    da_obs = (
+        info[obs].ds[info[obs].var].reduce(func_dict[time_agg], dim=info[obs].time_dim)
+    )
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
@@ -739,7 +933,7 @@ def plot_time_agg_subsampled(
     )
 
     da_list = []  # Store data arrays for the multi-model median & anomaly plot
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         i += 2  # Leave ax[0-1] for obs and the multi-model median
         da = resample_subsample(info[m], info[m].ds, time_agg, n_obs_samples, resamples)
         da_list.append(da)
@@ -754,7 +948,7 @@ def plot_time_agg_subsampled(
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig, ax[i], dm, title=f"{letters[i]} Multi-model median", **cbar_kwargs
     )
@@ -791,17 +985,15 @@ def plot_time_agg_subsampled(
         title=f"{letters[i]} Observed {time_agg} {plot_dict['metric']}",
         hatching=info[obs].pval_mask,
         cmap=plot_dict["cmap"],
-        ticks=plot_dict["ticks"],
+        ticks=plot_dict["ticks"][::2],
         extend=plot_dict["cbar_extend"],
     )
 
-    # Create an inset axes for the colorbar [x0, y0, width, height]
-    cax = ax[i].inset_axes([0.04, 0.1, 0.7, 0.05])
-    cbar = fig.colorbar(cs, cax=cax, orientation="horizontal")
-    cbar.ax.set_title(f"{plot_dict['metric']} [{info[obs].units}]")
+    # Create an inset axes for the colorbar
+    cbar = add_inset_colorbar(fig, ax[i], cs, plot_dict["units_label"])
 
     da_anom_list = []  # Store data arrays for the multi-model median
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         da = da_list[i]
         i += 2  # Leave ax[0-1] for obs and the multi-model median
         da_obs_regrid = general_utils.regrid(da_obs, da)
@@ -818,7 +1010,7 @@ def plot_time_agg_subsampled(
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_anom_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_anom_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
@@ -849,17 +1041,19 @@ def plot_time_agg_subsampled(
     plt.close()
 
 
-def plot_event_month_mode(info, plot_dict, min_count=4, add_labels=True):
+def plot_event_month_mode(
+    info, plot_dict, min_count=4, cmap=month_cmap, add_labels=True
+):
     """Plot map of the most common month when event occurs."""
 
     cbar_kwargs = dict(
-        cmap=month_cmap,
+        cmap=cmap,
         ticks=np.arange(0.5, 13.5),
         ticklabels=list(calendar.month_name)[1:],
         extend="neither",
     )
 
-    # Add white space for ACT, TAS labels
+    # Add white space for ACT, TAS, VIC labels
     map_kwargs = dict(xlim=(112.5, 157)) if add_labels else {}
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
@@ -873,7 +1067,7 @@ def plot_event_month_mode(info, plot_dict, min_count=4, add_labels=True):
             coords=dict(lat=info[m].ds.lat, lon=info[m].ds.lon),
             dims=["lat", "lon"],
         )
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model mode
             da_list.append(da)
 
@@ -888,7 +1082,7 @@ def plot_event_month_mode(info, plot_dict, min_count=4, add_labels=True):
 
     # Multi-model mode
     dr_list = []
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         regridder = shared_grid_regridder(info[m].ds, method="nearest_s2d")
         dr_list.append(regridder(da_list[i]))
 
@@ -929,21 +1123,34 @@ def plot_event_month_mode(info, plot_dict, min_count=4, add_labels=True):
     plt.close()
 
 
-def plot_event_month_max(info, plot_dict, min_count=4):
+def plot_record_event_month(
+    info, plot_dict, time_agg="maximum", min_count=4, cmap=month_cmap
+):
     """Plot map of the most common month when event occurs."""
+
+    cbar_kwargs = dict(
+        cmap=cmap,
+        ticks=np.arange(0.5, 13.5),
+        ticklabels=list(calendar.month_name)[1:],
+        extend="neither",
+    )
+
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
 
     da_list = []  # Store data arrays for the multi-model mode
     for i, m in enumerate(info.keys()):
         # Change the time dimension to event year
-        dt = info[m].ds[var].copy().compute()
+        dt = info[m].ds[plot_dict["var"]].copy().compute()
         dt.coords[info[m].time_dim] = dt.event_time.dt.month
 
         # Get the year of the maximum or minimum event
         if time_agg == "maximum":
             da = dt.idxmax(info[m].time_dim)
-        if m in models:
+        elif time_agg == "minimum":
+            da = dt.idxmin(info[m].time_dim)
+
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model mode
             da_list.append(da)
 
@@ -952,15 +1159,12 @@ def plot_event_month_max(info, plot_dict, min_count=4):
             ax[i],
             da,
             title=f"{letters[i]} {info[m].title_name}",
-            cmap=month_cmap,
-            ticks=np.arange(0.5, 13.5),
-            ticklabels=list(calendar.month_name)[1:],
-            extend="neither",
+            **cbar_kwargs,
         )
 
     # Multi-model mode
     dr_list = []
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         regridder = shared_grid_regridder(info[m].ds, method="nearest_s2d")
         dr_list.append(regridder(da_list[i]))
 
@@ -978,19 +1182,14 @@ def plot_event_month_max(info, plot_dict, min_count=4):
         dm,
         title=f"{letters[i]} Multi-model mode",
         hatching=counts < min_count,
-        cmap=month_cmap,
-        ticks=np.arange(0.5, 13.5),
-        ticklabels=list(calendar.month_name)[1:],
-        extend="neither",
+        **cbar_kwargs,
     )
     add_shared_colorbar(
         fig,
         ax,
         cs,
         label=f"Month of maximum {plot_dict['metric']} event",
-        extend="neither",
-        ticks=np.arange(0.5, 13.5),
-        ticklabels=list(calendar.month_abbr)[1:],
+        **cbar_kwargs,
     )
 
     ax = extra_subplot_formatting(ax)
@@ -1006,6 +1205,11 @@ def plot_event_year(
 ):
     """Plot map of the year of the maximum or minimum event."""
 
+    cbar_kwargs = dict(
+        cmap=cmap_dict["inferno"],
+        ticks=ticks,
+        extend="max",
+    )
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
     da_list = []  # Store data arrays for the multi-model mode
@@ -1022,7 +1226,7 @@ def plot_event_year(
         elif time_agg == "minimum":
             da = dt.idxmin(info[m].time_dim)
 
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)
 
@@ -1031,17 +1235,14 @@ def plot_event_year(
             ax[i],
             da,
             title=f"{letters[i]} {info[m].title_name}",
-            # hatching=info[m].pval_mask,
-            cmap=cmap_dict["inferno"],
-            ticks=ticks,
-            extend="max",
+            **cbar_kwargs,
         )
 
     # Multi-model mode (position after obs & before models)
     # add hatching where mode count is less than min_count
     dr_list = []
     tick_bins = np.concatenate([ticks, [np.inf]])  # Add an extra bin to the right
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         bin_indices = np.digitize(da_list[i], tick_bins)
         da = tick_bins[bin_indices - 1]
         da = xr.DataArray(da, da_list[i].coords, dims=da_list[i].dims)
@@ -1064,9 +1265,7 @@ def plot_event_year(
         ax[i],
         dm,
         title=f"{letters[i]} Multi-model mode",
-        cmap=cmap_dict["inferno"],
-        ticks=ticks,
-        extend="max",
+        **cbar_kwargs,
         hatching=counts < min_count,
     )
 
@@ -1075,9 +1274,7 @@ def plot_event_year(
         ax,
         cs,
         label=f"Year of {time_agg} {plot_dict['metric']}",
-        extend="max",
-        ticks=ticks,
-        ticklabels=None,
+        **cbar_kwargs,
     )
 
     ax = extra_subplot_formatting(ax)
@@ -1091,6 +1288,11 @@ def plot_event_year(
 def plot_aep(info, plot_dict, covariate, aep=1):
     """Plot maps of AEP for a given threshold (at a covariate value)."""
 
+    cbar_kwargs = dict(
+        cmap=plot_dict["cmap"],
+        ticks=plot_dict["ticks"],
+        extend=plot_dict["cbar_extend"],
+    )
     ari = eva.aep_to_ari(aep)
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
@@ -1098,9 +1300,9 @@ def plot_aep(info, plot_dict, covariate, aep=1):
 
     da_list = []  # Store data arrays for the multi-model median
     for i, m in enumerate(info.keys()):
-        # _covariate = xr.DataArray([covariate], dims=info[m].time_dim)
+
         da = eva.get_return_level(ari, info[m].ds.dparams_ns, covariate)
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1
             da_list.append(da)
         fig, ax[i], cs = map_subplot(
@@ -1108,33 +1310,27 @@ def plot_aep(info, plot_dict, covariate, aep=1):
             ax[i],
             da,
             title=f"{letters[i]} {info[m].title_name}",
-            hatching=info[m].pval_mask,
-            cmap=plot_dict["cmap"],
-            ticks=plot_dict["ticks"],
-            extend=plot_dict["cbar_extend"],
+            hatching=info[m].gev_mask,
+            **cbar_kwargs,
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
         dm,
         title=f"{letters[i]} Multi-model median",
-        cmap=plot_dict["cmap"],
-        ticks=plot_dict["ticks"],
-        extend=plot_dict["cbar_extend"],
+        **cbar_kwargs,
     )
 
     add_shared_colorbar(
         fig,
         ax,
         cs,
-        label=plot_dict["units_label"],
-        ticks=plot_dict["ticks"],
-        extend=plot_dict["cbar_extend"],
-        ticklabels=True,
+        **cbar_kwargs,
+        # ticklabels=True,
     )
 
     ax = extra_subplot_formatting(ax)
@@ -1152,7 +1348,13 @@ def plot_aep_trend(info, plot_dict, covariates, aep=1):
     ari = eva.aep_to_ari(aep)
 
     cbar_kwargs = dict(
-        cmap=plot_dict["cmap_anom"], ticks=plot_dict["ticks_trend"], extend="both"
+        cmap=plot_dict["cmap_anom"],
+        ticks=plot_dict["ticks_trend"],
+        extend="both",
+        ticklabels=np.around(
+            plot_dict["ticks_trend"][:-1] + np.diff(plot_dict["ticks_trend"]) / 2,
+            2,
+        ),
     )
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
@@ -1165,7 +1367,10 @@ def plot_aep_trend(info, plot_dict, covariates, aep=1):
         da = da.isel({info[m].time_dim: -1}, drop=True) - da.isel(
             {info[m].time_dim: 0}, drop=True
         )
-        if m in models:
+        # Convert to per decade (trend/#intervals x 10 intervals)
+        da = (da / (covariates[-1] - covariates[0])) * 10
+
+        if m in plot_dict["models"]:
             i += 1
             da_list.append(da)
         fig, ax[i], cs = map_subplot(
@@ -1173,19 +1378,23 @@ def plot_aep_trend(info, plot_dict, covariates, aep=1):
             ax[i],
             da,
             title=f"{letters[i]} {info[m].title_name}",
-            hatching=info[m].pval_mask,
+            hatching=info[m].gev_mask,
             **cbar_kwargs,
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig, ax[i], dm, title=f"{letters[i]} Multi-model median", **cbar_kwargs
     )
 
     add_shared_colorbar(
-        fig, ax, cs, label=plot_dict["units_label"], ticklabels=True, **cbar_kwargs
+        fig,
+        ax,
+        cs,
+        label=f"{plot_dict['var_name']} [{plot_dict['units']} / decade]",
+        **cbar_kwargs,
     )
 
     ax = extra_subplot_formatting(ax)
@@ -1203,6 +1412,11 @@ def plot_aep_empirical(info, plot_dict, var, aep=1):
     """Plot map of empirical AEP for a given threshold."""
 
     ari = eva.aep_to_ari(aep)
+    cbar_kwargs = dict(
+        cmap=plot_dict["cmap"],
+        ticks=plot_dict["ticks"],
+        extend=plot_dict["cbar_extend"],
+    )
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
@@ -1211,7 +1425,7 @@ def plot_aep_empirical(info, plot_dict, var, aep=1):
         da = eva.get_empirical_return_level(
             info[m].ds[var], ari, core_dim=info[m].time_dim
         )
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1
             da_list.append(da)
 
@@ -1220,23 +1434,19 @@ def plot_aep_empirical(info, plot_dict, var, aep=1):
             ax[i],
             da,
             title=f"{letters[i]} {info[m].title_name}",
-            hatching=info[m].pval_mask,
-            cmap=plot_dict["cmap"],
-            ticks=plot_dict["ticks"],
-            extend=plot_dict["cbar_extend"],
+            hatching=~info[m].gev_mask,
+            **cbar_kwargs,
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
         dm,
         title=f"{letters[i]} Multi-model median",
-        cmap=plot_dict["cmap"],
-        ticks=plot_dict["ticks"],
-        extend=plot_dict["cbar_extend"],
+        **cbar_kwargs,
     )
 
     add_shared_colorbar(
@@ -1244,8 +1454,7 @@ def plot_aep_empirical(info, plot_dict, var, aep=1):
         ax,
         cs,
         label=plot_dict["units_label"],
-        ticks=plot_dict["ticks"],
-        extend=plot_dict["cbar_extend"],
+        **cbar_kwargs,
     )
 
     ax = extra_subplot_formatting(ax)
@@ -1263,8 +1472,14 @@ def plot_aep_empirical(info, plot_dict, var, aep=1):
 
 def plot_new_record_probability(info, plot_dict, start_year, time_agg, n_years=10):
     """Plot map of the probability of breaking the obs record in the next X years."""
-    # Get the event record (return period) for the obs data
 
+    cbar_kwargs = dict(
+        cmap=cmocean.cm.thermal,
+        ticks=np.arange(0, 101, 10),
+        extend="neither",
+    )
+
+    # Get the event record (return period) for the obs data
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
     da_list = []  # Store data arrays for the multi-model median
@@ -1279,7 +1494,7 @@ def plot_new_record_probability(info, plot_dict, start_year, time_agg, n_years=1
             record, info[m].ds.dparams_ns, start_year, n_years, info[m].time_dim
         )
         da = cumulative_probability * 100
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)  # Only append model data
 
@@ -1289,25 +1504,22 @@ def plot_new_record_probability(info, plot_dict, start_year, time_agg, n_years=1
             da,
             title=f"{letters[i]} {info[m].title_name}",
             hatching=info[m].pval_mask,
-            cmap=plt.cm.BuPu,
-            ticks=np.arange(0, 105, 5),
-            extend="neither",
+            hatching_color="grey",
+            **cbar_kwargs,
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
         dm,
         title=f"{letters[i]} Multi-model median",
-        cmap=plt.cm.BuPu,
-        ticks=np.arange(0, 105, 5),
-        extend="neither",
+        **cbar_kwargs,
     )
 
-    add_shared_colorbar(fig, ax, cs, label="Probability [%]", extend="neither")
+    add_shared_colorbar(fig, ax, cs, label="Probability [%]", **cbar_kwargs)
 
     ax = extra_subplot_formatting(ax)
 
@@ -1322,6 +1534,12 @@ def plot_new_record_probability(info, plot_dict, start_year, time_agg, n_years=1
 
 def plot_new_record_probability_empirical(info, plot_dict, var, time_agg, n_years=10):
     """Plot map of the probability of breaking the obs record in the next X years."""
+
+    cbar_kwargs = dict(
+        cmap=cmocean.cm.thermal,  # plt.cm.inferno,  # plt.cm.BuPu,
+        ticks=np.arange(0, 101, 10),
+        extend="neither",
+    )
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
@@ -1338,7 +1556,7 @@ def plot_new_record_probability_empirical(info, plot_dict, var, time_agg, n_year
         )
         da = cumulative_probability * 100
 
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)  # Only append model data
 
@@ -1348,25 +1566,22 @@ def plot_new_record_probability_empirical(info, plot_dict, var, time_agg, n_year
             da,
             title=f"{letters[i]} {info[m].title_name}",
             hatching=info[m].pval_mask,
-            cmap=plt.cm.BuPu,
-            ticks=np.arange(0, 105, 5),
-            extend="neither",
+            hatching_color="grey",
+            **cbar_kwargs,
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
         dm,
         title=f"{letters[i]} Multi-model median",
-        cmap=plt.cm.BuPu,
-        ticks=np.arange(0, 105, 5),
-        extend="neither",
+        **cbar_kwargs,
     )
 
-    add_shared_colorbar(fig, ax, cs, label="Probability [%]", extend="neither")
+    add_shared_colorbar(fig, ax, cs, label="Probability [%]", **cbar_kwargs)
 
     ax = extra_subplot_formatting(ax)
 
@@ -1375,6 +1590,70 @@ def plot_new_record_probability_empirical(info, plot_dict, var, time_agg, n_year
 
     outfile = f"{plot_dict['fig_dir']}/new_record_probability_{n_years}-year_empirical_{plot_dict['filestem']}.png"
     plt.savefig(outfile, bbox_inches="tight")
+    plt.show()
+    plt.close()
+
+
+def plot_abstract(info, plot_dict, time_agg="maximum", start_year=2025, n_years=10):
+    """Plot map of MMM record breaking probability."""
+
+    # Get metric in each model
+    da_list = []
+    for i, m in enumerate(plot_dict["models"]):
+        record = info[m].obs_ds[info[m].var].reduce(func_dict[time_agg], dim="time")
+        if info[m].is_model():
+            record = general_utils.regrid(record, info[m].ds)
+        cumulative_probability = nonstationary_new_record_probability(
+            record, info[m].ds.dparams_ns, start_year, n_years, info[m].time_dim
+        )
+        da = cumulative_probability * 100
+        da_list.append(da)
+
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
+
+    cbar_kwargs = dict(
+        cmap=cmocean.cm.thermal, ticks=np.arange(0, 101, 10), extend="neither"
+    )
+    # Plot the metric MMM
+    fig, ax = plt.subplots(
+        1, 1, figsize=(5, 6), dpi=300, subplot_kw=dict(projection=PlateCarree())
+    )
+    fig, ax, cs = map_subplot(fig, ax, dm, **cbar_kwargs)
+
+    cbar = add_shared_colorbar(
+        fig,
+        ax,
+        cs,
+        orientation="vertical",
+        aspect=30,
+        pad=0.03,
+        shrink=0.5,
+        fraction=0.9,
+        **cbar_kwargs,
+    )
+    cbar.ax.set_title("Probability (%)", fontsize=10, pad=9)
+
+    # Hide the x and y axes and ticks
+    ax.set_axis_off()
+
+    # Add a title to lower left corner
+    ax.text(
+        x=0.36,
+        y=0.06,
+        s=f"Probability of record-breaking \n{plot_dict['var_name'].lower()}s in the next decade",
+        fontsize=12,
+        weight="bold",
+        ha="center",
+        va="bottom",
+        transform=ax.transAxes,
+        zorder=10,
+        wrap=1,
+    )
+
+    plt.savefig(
+        f"{plot_dict['fig_dir']}/abstract_{plot_dict['filestem']}.png",
+        bbox_inches="tight",
+    )
     plt.show()
     plt.close()
 
@@ -1406,11 +1685,9 @@ def plot_obs_ari(
     mask : xarray.DataArray, default None
         Show model similarity stippling mask
     """
-    cmap = cmap_dict["inferno"]
-    cmap.set_bad("lightgrey")
 
     cbar_kwargs = dict(
-        cmap=cmap,
+        cmap=cmocean.cm.thermal,
         norm=LogNorm(vmin=1, vmax=10000),
         extend="max",
     )
@@ -1440,7 +1717,7 @@ def plot_obs_ari(
             output_dtypes=["float64"],
         )
 
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)  # Only append model data
 
@@ -1450,12 +1727,13 @@ def plot_obs_ari(
             da,
             title=f"{letters[i]} {info[m].title_name}",
             hatching=info[m].pval_mask,
+            hatching_color="grey",
             **cbar_kwargs,
         )
 
     # Multi-model median
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig, ax[i], dm, title=f"{letters[i]} Multi-model median", **cbar_kwargs
     )
@@ -1472,12 +1750,12 @@ def plot_obs_ari(
     plt.close()
 
 
-def plot_metric_variability(info, var, plot_dict):
+def plot_metric_variability(info, var, plot_dict, ticks=None):
     """Plot the median absolution deviation of the metric."""
 
     cbar_kwargs = dict(
         cmap=plt.cm.viridis,
-        ticks=np.arange(0, 4.5, 0.5),
+        ticks=ticks,
         extend="max",
     )
     statistic = median_abs_deviation
@@ -1490,7 +1768,7 @@ def plot_metric_variability(info, var, plot_dict):
     for i, m in enumerate(info.keys()):
 
         da = info[m].ds[var].reduce(statistic, dim=info[m].time_dim, **kwargs)
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)
 
@@ -1505,7 +1783,7 @@ def plot_metric_variability(info, var, plot_dict):
 
     # Show obs time agg (not subsampled)
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig, ax[i], dm, title=f"{letters[i]} Multi-model median", **cbar_kwargs
     )
@@ -1533,7 +1811,7 @@ def plot_nonstationary_gev_param(info, param, plot_dict):
     ----------
     info : dict
         Dictionary of InfoSet instances for each model and observation dataset.
-    param : {'c', 'loc0', 'loc1', 'scale0', 'scale1'}
+    param : {'c', 'location_0', 'location_1', 'scale_0', 'scale_1'}
 
     Notes
     -----
@@ -1548,26 +1826,26 @@ def plot_nonstationary_gev_param(info, param, plot_dict):
         "c": dict(
             name="shape", units="", ticks=np.arange(-1, 1.1, 0.2), cmap=plt.cm.RdBu_r
         ),
-        "loc0": dict(
+        "location_0": dict(
             name="location intercept",
             units="",
             ticks=np.arange(-150, 170, 20),
             cmap=plt.cm.RdBu_r,
         ),
-        "loc1": dict(
+        "location_1": dict(
             name="location trend",
             units=" / decade",
             ticks=plot_dict["ticks_param_trend"]["location"],
             cmap=plt.cm.RdBu_r,
         ),
-        "scale0": dict(
+        "scale_0": dict(
             name="scale intercept",
             units="",
             ticks=np.arange(0, 32, 2),
             cmap=plt.cm.viridis,
             extend="max",
         ),
-        "scale1": dict(
+        "scale_1": dict(
             name="scale trend",
             units=" / decade",
             ticks=plot_dict["ticks_param_trend"]["scale"],
@@ -1578,6 +1856,11 @@ def plot_nonstationary_gev_param(info, param, plot_dict):
     assert param in param_dict_dict.keys(), f"Unknown parameter: {param}"
     # Get parameter-specific dictionary
     param_dict = param_dict_dict[param]
+    cbar_kwargs = dict(
+        cmap=param_dict["cmap"],
+        ticks=param_dict["ticks"],
+        extend=param_dict["extend"] if "extend" in param_dict else "both",
+    )
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
@@ -1587,10 +1870,10 @@ def plot_nonstationary_gev_param(info, param, plot_dict):
 
         da = info[m].ds.dparams_ns.sel(dparams=param)
 
-        if param in ["loc1", "scale1"]:
+        if param in ["location_1", "scale_1"]:
             da = da * 10  # Convert to per decade
 
-        if m in models:
+        if m in plot_dict["models"]:
             i += 1  # Leave ax[1] for the multi-model median
             da_list.append(da)  # Only append model data
 
@@ -1600,22 +1883,18 @@ def plot_nonstationary_gev_param(info, param, plot_dict):
             da,
             title=f"{letters[i]} {info[m].title_name}",
             hatching=info[m].pval_mask,
-            cmap=param_dict["cmap"],
-            ticks=param_dict["ticks"],
-            extend=param_dict["extend"] if "extend" in param_dict else "both",
+            **cbar_kwargs,
         )
 
     # Multi-model median (position after obs & before models)
     i = 1
-    dm = multimodel_avg(info, da_list)
+    dm = multimodel_avg(info, plot_dict["models"], da_list)
     fig, ax[i], cs = map_subplot(
         fig,
         ax[i],
         dm,
         title=f"{letters[i]} Multi-model median",
-        cmap=param_dict["cmap"],
-        ticks=param_dict["ticks"],
-        extend=param_dict["extend"] if "extend" in param_dict else "both",
+        **cbar_kwargs,
     )
 
     add_shared_colorbar(
@@ -1623,7 +1902,7 @@ def plot_nonstationary_gev_param(info, param, plot_dict):
         ax,
         cs,
         label=f"{param_dict['name'].capitalize()} parameter",
-        ticks=param_dict["ticks"],
+        **cbar_kwargs,
     )
 
     ax = extra_subplot_formatting(ax)
@@ -1652,14 +1931,18 @@ def plot_min_independent_lead(info, plot_dict):
     Plot doesn't include obs (or a blank space) or the multi-model median.
     """
 
-    ticks = np.arange(0, 11)
-    ticklabels = np.arange(1, 11)
+    cbar_kwargs = dict(
+        cmap=plt.cm.viridis,
+        ticks=np.arange(0, 11),
+        ticklabels=np.arange(1, 11),
+        extend="neither",
+    )
 
     fig, ax = plt.subplots(3, 4, subplot_kw=dict(projection=PlateCarree()))
     ax = ax.flatten()
 
     i = 0
-    for m in models:
+    for m in plot_dict["models"]:
         da = info[m].ds
         for month in da.month.values:
             dx = da.min_lead.sel(month=month)
@@ -1668,10 +1951,7 @@ def plot_min_independent_lead(info, plot_dict):
                 ax[i],
                 dx,
                 title=f"{letters[i]} {info[m].name} ({calendar.month_name[month]} starts)",
-                cmap=plt.cm.viridis,
-                ticks=ticks,
-                ticklabels=ticklabels,
-                extend="neither",
+                **cbar_kwargs,
             )
 
             # Add box with value of min lead spatial median in lower left corner
@@ -1704,9 +1984,7 @@ def plot_min_independent_lead(info, plot_dict):
         ax,
         cs,
         label=f"First independent {plot_dict['metric']} lead time",
-        extend="neither",
-        ticks=ticks,
-        ticklabels=ticklabels,
+        **cbar_kwargs,
     )
 
     outfile = f"{plot_dict['fig_dir']}/independence_{plot_dict['filestem_no_bc']}.png"
@@ -1742,10 +2020,13 @@ def plot_stability(
             ticks = plot_dict["ticks"]
 
     fig, ax = plt.subplots(
-        len(models), 9, figsize=(22, 22), subplot_kw=dict(projection=PlateCarree())
+        len(plot_dict["models"]),
+        9,
+        figsize=(22, 22),
+        subplot_kw=dict(projection=PlateCarree()),
     )
 
-    for i, m in enumerate(models):
+    for i, m in enumerate(plot_dict["models"]):
         file = Path(var_dict[m]["metric_fcst"])
         da = fileio.open_dataset(str(file))[var_dict[m]["var"]]
         dx = da.stack(dict(sample=["ensemble", "init_date"]))
@@ -1795,7 +2076,7 @@ def plot_stability(
 
             if j != 0:
                 ax[i, j].set_yticklabels([])
-            if i != len(models) - 1:
+            if i != len(plot_dict["models"]) - 1:
                 ax[i, j].set_xticklabels([])
         da.close()
 
@@ -1820,184 +2101,3 @@ def plot_stability(
     plt.savefig(outfile, bbox_inches="tight")
     plt.show()
     plt.close()
-
-
-if __name__ == "__main__":
-
-    # # Define metric specific args
-    # parser = argparse.ArgumentParser(description="Plot spatial maps of model data.")
-    # parser.add_argument("--metric", type=str, help="Metric to plot (e.g., txx, rx1day)")
-    # parser.add_argument(
-    #     "--obs", type=str, help="Name of the observation dataset (e.g., AGCD, gridded_obs)"
-    # )
-    # parser.add_argument(
-    #     "--bc",
-    #     type=str,
-    #     default=None,
-    #     help="Bias correction method (e.g., None, additive, multiplicative)",
-    # )
-    # parser.add_argument(
-    #     "--obs_config_file",
-    #     type=str,
-    #     help="Name of the observation dataset makefile (e.g., AGCD-CSIRO_r05_tasmax_config.mk)",
-    # )
-    # args = parser.parse_args()
-    # metric, obs, bc, obs_config_file = (
-    #     args.metric,
-    #     args.obs,
-    #     args.bc,
-    #     args.obs_config_file,
-    # )
-    # # python3 spatial_maps.py --metric txx --obs AGCD --bc additive --obs_config_file AGCD-CSIRO_r05_tasmax_config.mk
-    # # python3 spatial_maps.py --metric rx1day --obs AGCD --bc additive --obs_config_file AGCD-CSIRO_r05_precip_config.mk
-
-    metric = "txx"
-    obs_config_file = "AGCD-CSIRO_r05_tasmax_config.mk"
-    obs = "AGCD"
-    bc = [None, "additive", "multiplicative"][1]
-
-    if metric == "txx":
-        # Exclude HadGEM3-GC31-MM tasmax results
-        models = np.array([m for m in models if m != "HadGEM3-GC31-MM"])
-
-    # # Get variables from makefile (nested dictionary)
-    var_dict = get_makefile_vars(metric, obs, obs_config_file=obs_config_file)
-
-    # Filestem for figures and datatree
-    filestem = f"{metric}_{var_dict[obs]['timescale']}_{var_dict[obs]['region']}"
-    if bc is not None:
-        filestem += f"_bias-corrected-{var_dict[obs]['obs_dataset']}-{bc}"
-    dt_file = f"{var_dict[obs]['project_dir']}/data/datatree_{filestem}.nc"
-
-    # Extract some variables from the dictionaries
-    plot_dict = eval(var_dict[obs]["plot_dict"])
-    var = var_dict[obs]["var"]
-    time_agg = var_dict[obs]["time_agg"]
-    covariate_base = int(var_dict[obs]["covariate_base"])
-    covariates = eval(var_dict[obs]["gev_trend_period"])
-    plot_dict["fig_dir"] = Path(var_dict[obs]["fig_dir"]) / "multimodel"
-    plot_dict["filestem"] = filestem
-    plot_dict["filestem_no_bc"] = filestem.split("_bias")[0]
-    plot_dict_avg = plot_dict.copy()
-    stability_kwargs = {}
-    stability_anom_kwargs = {}
-
-    if metric == "txx":
-        plot_dict["cmap"] = cmap_dict["ipcc_temp_seq"]
-        if bc is None:
-            plot_dict_avg["ticks"] = np.arange(22, 54 + 2, 2)
-            plot_dict["ticks"] = np.arange(24, 66 + 2, 2)
-        else:
-            plot_dict_avg["ticks"] = np.arange(22, 54 + 2, 2)
-            plot_dict["ticks"] = np.arange(32, 58 + 2, 2)
-
-        stability_anom_kwargs = dict(
-            ticks=np.arange(-3.3, 3.5, 0.2),
-            ticklabels=np.around(np.arange(-3.2, 3.4, 0.2), 1),
-        )
-
-    # # Create/open datatree of all model and observation datasets
-    if Path(dt_file).exists():
-        dt = xr.open_datatree(dt_file)
-    else:
-        # Create a data tree using dict of {model: filenames["metric_fcst"]}
-        data_dict = {}
-        data_dict[f"obs/{obs}"] = open_obs_dataset(var_dict, obs)
-        for i, model in enumerate(models):
-            print(f"{i}. {model}")
-            data_dict[f"model/{model}"] = open_model_dataset(var_dict[model], bc)
-        dt = xr.DataTree.from_dict(data_dict)
-        dt.to_netcdf(dt_file, compute=True)
-
-    # Create nested dict of Infoset objects containing variables and datasets
-    info = {}
-    info[obs] = InfoSet(
-        name=obs,
-        file=var_dict[obs]["metric_obs"],
-        obs_name=obs,
-        ds=dt[f"obs/{obs}"].ds,
-        obs_ds=dt[f"obs/{obs}"].ds,
-        bias_correction=bc,
-        pval_mask=None,
-        **plot_dict,
-    )
-
-    for m in models:
-        info[m] = InfoSet(
-            name=m,
-            obs_name=obs,
-            file=var_dict[m]["metric_fcst"],
-            ds=dt[f"model/{m}"].ds,
-            obs_ds=subset_obs_dataset(dt[f"obs/{obs}"].ds, dt[f"model/{m}"].ds),
-            pval_mask=dt[f"model/{m}"].ds.pval_mask,
-            bias_correction=bc,
-            **plot_dict,
-        )
-        info[m].regridder = shared_grid_regridder(info[m].ds, method="conservative")
-
-    # Plots
-    # Metric maximum/median
-    plot_time_agg(info, var, "maximum", plot_dict)
-    plot_time_agg(info, var, "median", plot_dict_avg)
-    plot_time_agg_subsampled(info, obs, "maximum", plot_dict, 10000)
-    for anom in ["anom", "anom_pct", "anom_std", "anom_2000yr"]:
-        plot_obs_anom(info, obs, var, "maximum", anom, covariate_base, plot_dict)
-    plot_obs_anom(
-        info,
-        obs,
-        var,
-        "median",
-        "anom",
-        covariate_base,
-        plot_dict_avg,
-    )
-
-    # Seasonality/event year
-    plot_event_month_mode(info, plot_dict, add_labels=True)
-    plot_event_month_max(info, plot_dict)
-    plot_event_year(info, var, "maximum", plot_dict, ticks=np.arange(1960, 2025, 5))
-    plot_metric_variability(info, var, plot_dict)
-
-    aep = 1
-    plot_aep(info, plot_dict, covariates[-1], aep=aep)
-    plot_aep_trend(
-        info,
-        plot_dict,
-        covariates,
-        aep=aep,
-    )
-    plot_aep_empirical(info, plot_dict, var, aep=aep)
-
-    plot_new_record_probability(
-        info, plot_dict, covariate_base, time_agg="maximum", n_years=10
-    )
-    plot_new_record_probability_empirical(
-        info, plot_dict, var, time_agg="maximum", n_years=10
-    )
-    plot_obs_ari(
-        info,
-        plot_dict,
-        var,
-        obs,
-        covariate_base,
-        time_agg="maximum",
-    )
-    # GEV/empirical
-    for param in ["c", "loc0", "loc1", "scale0", "scale1"]:
-        plot_nonstationary_gev_param(info, param, plot_dict)
-
-    if bc is None:
-        # Independent lead time
-        plot_min_independent_lead(info, plot_dict)
-
-        # Stability (don't plot for diff bc)
-        for method in ["aep", "median"]:
-            plot_stability(info, var_dict, plot_dict, method, anomaly=False)
-            plot_stability(
-                info,
-                var_dict,
-                plot_dict,
-                method=method,
-                anomaly=True,
-                **stability_anom_kwargs,
-            )

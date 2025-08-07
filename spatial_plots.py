@@ -8,6 +8,7 @@ normalisation and plot annotations shifted to compensate multi-line plot titles.
 """
 
 import calendar
+import cmocean
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -44,44 +45,29 @@ func_dict = {
 # Colour blind friendly palette for each month of the year with
 # unique, but diverging HSB gradient (cool tones brighter(100, 2) & less
 # saturated (-4) than corresponding warm tones)
-# https://coolors.co/e0ae6c-cc7349-b82c33-a3147b-721899-002880-1f56ad-3a9bc2-5ad664-99eb8d
+# https://coolors.co/99209e-cf46a7-ff6775-eb9b52-f2df5b-effaaf-a0e496-59d171-3a9bc2-3767b3
 month_colours = [
-    "#A3147B",  # Jan: Fandango Pink
-    "#6F1894",  # Feb: Grape
-    "#002880",  # Mar: Resolution Blue
-    "#1F56AD",  # Apr: Sapphire
-    "#3A9BC2",  # May: Blue Green
-    "#5AD664",  # Jun: Malachite
-    "#99EB8D",  # Jul: Light Green
-    "#F5FFF4",  # Aug: Honeydew
-    "#F5E693",  # Sep: Flax
-    "#E0AE6C",  # Oct: Earth Yellow
-    "#CC7349",  # Nov: Brown Sugar
-    "#B82C33",  # Dec: Cardinal Red
+    "#EB9B52",  # Jan: Sandy brown
+    "#FF6775",  # Feb: Bright Pink
+    "#CF46A7",  # Mar: Mullberry
+    "#99209E",  # Apr: Mauveine
+    "#6A1A99",  # May: Purple Heart
+    "#3B35CC",  # Jun: Palatinate Blue
+    "#3767B3",  # Jul: True Blue
+    "#3A9BC2",  # Aug: Blue Green
+    "#59D171",  # Sep: Emerald
+    "#A0E496",  # Oct: Light Green
+    "#EFFAAF",  # Nov: Mindaro
+    "#F2DF5B",  # Dec: Maize
 ]
+month_cmap = mpl.colors.ListedColormap(month_colours)
 
-
-# month_colours = [
-#     "#B53190",  # Jan: Fandango Pink
-#     "#842BAB",  # Feb: Grape
-#     "#002880",  # Mar: Violet Blue
-#     "#3767B3",  # Apr: True Blue
-#     "#3A9BC2",  # May: Blue Green
-#     "#54D15E",  # Jun: Malachite
-#     "#93E087",  # Jul: Light Green
-#     "#F5FFF4",  # Aug: Honeydew
-#     "#F5E693",  # Sep: Flax
-#     "#E8B46F",  # Oct: Earth Yellow
-#     "#D97A4E",  # Nov: Burnt Sienna
-#     "#C94D53",  # Dec: Bittersweet shimmer
-# ]
-
-# https://coolors.co/3a9bc2-3767b3-2f2fa3-74309f-bf359b-f3614a-da8e58-e9b877-59d171-93e087
-# https://coolors.co/3a9bc2-3767b3-3c3ccd-74309f-bf359b-df5d5d-e5886c-e9b877-93e087-59d171
-month_colours = [
+# Alternative colours (better for distinguishing between DJF months)
+# https://coolors.co/74309f-3b35cc-3767b3-3a9bc2-58cc6f-93e087-e8bb80-e5886c-d95b5b-bf359b
+month_colours_alt = [
     "#BF359B",  # Jan: Fandango
     "#74309F",  # Feb: Grape
-    "#3C3CCD",  # Mar: Palatinate Blue
+    "#3B35CC",  # Mar: Palatinate Blue
     "#3767B3",  # Apr: True Blue
     "#3A9BC2",  # May: Blue Green
     "#59D171",  # Jun: Emerald
@@ -92,7 +78,7 @@ month_colours = [
     "#E5886C",  # Nov: Burnt Sienna
     "#DF5D5D",  # Dec: Indian Red
 ]
-month_cmap = mpl.colors.ListedColormap(month_colours)
+month_cmap_alt = mpl.colors.ListedColormap(month_colours_alt)
 
 
 class InfoSet:
@@ -119,7 +105,7 @@ class InfoSet:
     date_dim : str
         Time dimension name for date range (e.g., "sample" or "time")
     kwargs : dict
-        Additional metric-specific attributes (idx, var, var_name, units, units_label, freq, cmap, cmap_anom, ticks, ticks_anom, ticks_param_trend, cbar_extend, agcd_mask)
+        Additional metric-specific attributes (idx, var, var_name, units, units_label, freq, cmap, cmap_anom, ticks, ticks_anom, ticks_param_trend, ticks_trend, cbar_extend, agcd_mask)
 
     Attributes
     ----------
@@ -203,14 +189,16 @@ class InfoSet:
             # else:
             #     self.n_samples = ds[self.var].dropna("sample", how="any")["sample"].size
             #     self.long_name += f"(samples={self.n_samples})"
-            self.long_name_with_obs = f"{self.obs_name}, {self.long_name}"
+            self.long_name_with_obs = f"{self.obs_name}, {self.name}{self.bc_label}"
         else:
             self.time_dim = "time"
             self.long_name = f"{self.name}"
-            self.title_name = f"{self.name} gridded observations"
+            self.title_name = f"{self.name} observations"
             self.long_name_with_obs = self.long_name
 
         # Format colour maps
+        if len(self.units_label) > 10:
+            self.units_label = self.units_label.replace(" [", "\n[")
         self.cmap_anom.set_bad("lightgrey")
         self.cmap.set_bad("lightgrey")
         # Set ticks to zero for small values
@@ -425,7 +413,6 @@ def soft_record_metric(
         obs_da_std = obs_da.reduce(np.std, dim="time")
         obs_da_std_regrid = general_utils.regrid(obs_da_std, da_agg)
         anom = anom / obs_da_std_regrid
-        kwargs["title"] += " (standardised)"
         kwargs["cbar_label"] = "Observed\nstandard deviation"
         kwargs["ticks"] = plot_dict["ticks_anom_std"]
 
@@ -446,7 +433,14 @@ def soft_record_metric(
             f"Ratio of 2000-year {plot_dict['metric']}\nto the observed {time_agg}"
         )
         kwargs["ticks"] = plot_dict["ticks_anom_ratio"]
-        kwargs["vcentre"] = None
+        
+        if kwargs["ticks"][0] <= 0:
+            kwargs["extend"] = "max"
+        # if ticks arent symmetric about 1, then change cmap
+        # kwargs["vcentre"] = 1
+        if np.median(kwargs["ticks"]) != 1:
+            kwargs["cmap"] = plt.cm.viridis
+
     return anom, kwargs
 
 
@@ -610,7 +604,7 @@ def plot_gev_param_trend(info, dparams_ns, param="location", mask=None):
         Show model similarity stippling mask
     """
 
-    var_name = {"location": "loc1", "scale": "scale1"}
+    var_name = {"location": "location_1", "scale": "scale_1"}
     da = dparams_ns.sel(dparams=var_name[param])
 
     da = da * 10  # Convert to per decade
@@ -685,7 +679,7 @@ def plot_aep(info, dparams_ns, times, aep=1, mask=None):
         date_range=f"Difference between {times[0].item()} and {times[1].item()}",
         cmap=info.cmap_anom,
         cbar_extend="both",
-        ticks=info.ticks_anom,
+        ticks=info.ticks_trend,
         tick_labels=None,
         cbar_label=info.units_label,
         dataset_name=info.long_name,
@@ -763,12 +757,10 @@ def plot_obs_ari(
     ):
         obs_da_agg = obs_ds[info.var].reduce(func_dict[time_agg], dim="time")
         obs_da_agg = general_utils.regrid(obs_da_agg, ds[info.var])
-        cbar_label = (
-            f"Model-estimated\nannual recurrence interval\nin {covariate_base} [years]"
-        )
+        cbar_label = f"Model-estimated\naverage recurrence\ninterval in {covariate_base}\n[years]"
     else:
         obs_da_agg = obs_ds[info.var].reduce(func_dict[time_agg], dim=info.time_dim)
-        cbar_label = f"Annual recurrence\ninterval in {covariate_base} [years]"
+        cbar_label = f"Average recurrence\ninterval in {covariate_base}\n[years]"
 
     rp = xr.apply_ufunc(
         eva.get_return_period,
@@ -789,7 +781,7 @@ def plot_obs_ari(
         data=rp,
         stippling=mask,
         agcd_mask=info.agcd_mask,
-        title=f"Annual recurrence interval\nof observed {info.metric} {time_agg}",
+        title=f"Average recurrence interval\nof observed {info.metric} {time_agg}",
         date_range=info.date_range_obs,
         cmap=cmap,
         cbar_extend="max",
@@ -841,12 +833,12 @@ def plot_obs_ari_empirical(
         data=rp,
         stippling=mask,
         agcd_mask=info.agcd_mask,
-        title=f"Empirical annual\nrecurrence interval of\nobserved {info.metric} {time_agg}",
+        title=f"Empirical average\nrecurrence interval of\nobserved {info.metric} {time_agg}",
         date_range=info.date_range_obs,
         cmap=cmap,
         cbar_extend="max",
         norm=LogNorm(vmin=1, vmax=10000),
-        cbar_label="Empirical annual\nrecurrence interval [years]",
+        cbar_label="Empirical\naverage recurrence\ninterval [years]",
         dataset_name=info.long_name_with_obs,
         outfile=f"{info.fig_dir}/ari_obs_empirical_{time_agg}_{info.filestem(mask)}.png",
         **plot_kwargs,
@@ -942,7 +934,9 @@ def plot_new_record_probability(
 
     # Get the event record (return period) for the obs data
     record = obs_ds[info.var].reduce(func_dict[time_agg], dim="time")
-    if not all(([ds[dim].equals(obs_ds[dim]) for dim in ["lat", "lon"]])):
+    if ds is not None and not all(
+        ([ds[dim].equals(obs_ds[dim]) for dim in ["lat", "lon"]])
+    ):
         record = general_utils.regrid(record, ds)
     cumulative_probability = nonstationary_new_record_probability(
         record, dparams_ns, start_year, n_years, info.time_dim
@@ -958,7 +952,7 @@ def plot_new_record_probability(
         title=f"Probability of record breaking\n{info.metric} in the next {n_years} years",
         date_range=f"{start_year} to {start_year + n_years}",
         baseline=baseline,
-        cmap=plt.cm.BuPu,
+        cmap=cmocean.cm.thermal,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
         cbar_label="Probability [%]",
@@ -1030,7 +1024,7 @@ def plot_new_record_probability_empirical(
         agcd_mask=info.agcd_mask,
         title=f"Empirical probability of\nrecord breaking {info.metric}\nin the next {n_years} years",
         baseline=baseline,
-        cmap=plt.cm.BuPu,
+        cmap=cmocean.cm.thermal,
         cbar_extend="neither",
         ticks=tick_dict["percent"],
         cbar_label="Probability [%]",
@@ -1207,7 +1201,7 @@ def combine_model_plots(metric, bc, obs_name, fig_dir, n_models=12):
             axis = False
 
         _, axes = plt.subplots(3, 4, figsize=[12, 10], layout="compressed")
-        combine_images(axes, fig_dir / f"acs_combined/{outfile}.png", group, axis=axis)
+        combine_images(axes, fig_dir / f"{outfile}.png", group, axis=axis)
 
 
 if __name__ == "__main__":
@@ -1218,7 +1212,7 @@ if __name__ == "__main__":
             metric=metric,
             bc=bc,
             obs_name="AGCD",
-            fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/",
+            fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/acs/combined/",
             n_models=11,
         )
     metric = "rx1day"
@@ -1227,6 +1221,6 @@ if __name__ == "__main__":
             metric=metric,
             bc=bc,
             obs_name="AGCD",
-            fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/",
+            fig_dir=f"/g/data/xv83/unseen-projects/outputs/{metric}/figures/acs/combined/",
             n_models=12,
         )
