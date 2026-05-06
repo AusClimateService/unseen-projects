@@ -21,7 +21,7 @@ SIMILARITY=${ENV_DIR}/bin/similarity
 MOMENTS=${ENV_DIR}/bin/moments
 EVA=${ENV_DIR}/bin/eva
 
-FCST_DATA=/g/data/xv83/unseen-projects/code/file_lists/${MODEL}_${EXPERIMENT}_${VAR}_files.txt
+FCST_DATA=/home/599/dbi599/unseen-projects/file_lists/${MODEL}_${EXPERIMENT}_${VAR}_files.txt
 METRIC_FCST=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}.nc
 METRIC_OBS=${PROJECT_DIR}/data/${METRIC}_${OBS_DATASET}_${OBS_TIME_PERIOD}_${TIMESCALE}_${REGION}.nc
 METRIC_FCST_ADDITIVE_BC=${PROJECT_DIR}/data/${METRIC}_${MODEL}-${EXPERIMENT}_${TIME_PERIOD_TEXT}_${TIMESCALE}_${REGION}_bias-corrected-${OBS_DATASET}-additive.nc
