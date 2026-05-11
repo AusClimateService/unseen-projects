@@ -1,11 +1,29 @@
 """Useful functions."""
 
+import glob
+
 import numpy as np
 import xarray as xr
 import xclim as xc
 
 from unseen import array_handling
 from unseen import time_utils
+
+
+def find_dcpp_data(event_df, model_name):
+    """Find DCPP data for a dataframe of events."""
+
+    assert model_name in ['CanESM5']
+    
+    for index, row in event_df.iterrows():
+        init_date = int(row['init_date'].strftime('%Y')) - 1
+        ensemble = int(row['ensemble']) + 1
+        start_date = row['event_start'].strftime('%Y-%m-%d')
+        wddx_value = row['event_length']
+        print(f'{wddx_value} day event starting {start_date}: initialisation year {init_date}, ensemble member r{ensemble}')
+        available_data = glob.glob(f'/g/data/oi10/replicas/CMIP6/DCPP/*/{model_name}/dcppA-hindcast/s{init_date}-r{ensemble}i1p2f1/day/*')
+        for path in available_data:
+            print(path)
 
 
 def calc_wddx_timeseries(timeseries, pctl10):
@@ -18,9 +36,10 @@ def calc_wddx_timeseries(timeseries, pctl10):
     ).drop_vars('event_start')
     drought_events = drought_events.swap_dims({'event': 'time'}).dropna('time')
     wddx_da = drought_events['event_length'].resample(time='1YS').max()
+    wddx_da = wddx_da.fillna(0.0)
     wddx_times = drought_events['event_length'].resample(time='1YS').map(xr.DataArray.idxmax, dim='time', keep_attrs=True)
-    wddx_da['time'] = wddx_times
     wddx_ds = wddx_da.to_dataset()
+    wddx_ds['event_start'] = wddx_times
 
     return wddx_ds
     
@@ -33,8 +52,6 @@ def calc_wddx_forecast(lead_indexed_forecast, pctl10):
     ntimes = len(wddx_ds['time'])
     wddx_ds['lead_time'] = xr.DataArray(np.arange(1, ntimes + 1, 1), dims={'time': wddx_ds['time']})
     wddx_ds = wddx_ds.swap_dims({'time': 'lead_time'})
-    wddx_ds = wddx_ds.reset_coords('time')
-    wddx_ds = wddx_ds.rename({'time': 'event_start'})
     
     return wddx_ds
 
@@ -63,7 +80,7 @@ def calc_wddx_obs(ds_obs, pctl10):
     """Calculate WDDX for an observational dataset"""
 
     wddx_ds = calc_wddx_timeseries(ds_obs['sfcWind'], pctl10)
-    wddx_ds = wddx_ds.rename({'time': 'event_start'})
+#    wddx_ds = wddx_ds.rename({'time': 'event_start'})
 
     return wddx_ds
 
