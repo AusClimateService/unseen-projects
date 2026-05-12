@@ -10,18 +10,50 @@ from unseen import array_handling
 from unseen import time_utils
 
 
+def ensemble_to_run(model_name, ensnum):
+    """Map ensemble number to DCPP model run"""
+
+    ensemble_to_run = {   
+        'CanESM5': f'r{ensnum}i1p2f1',
+        'CMCC-CM2-SR5': f'r{ensnum}i1p1f1',
+        'EC-Earth3': f'r{ensnum}i1p1f1' if ensnum <= 10 else f'r{ensnum-5}i2p1f1',
+        'HadGEM3-GC31-MM': f'r{ensnum}i1p1f2',
+        'IPSL-CM6A-LR': f'r{ensnum}i1p1f1',
+        'MIROC6': f'r{ensnum}i1p1f1',
+        'MPI-ESM1-2-HR': f'r{ensnum}i1p1f1',
+        'MRI-ESM2-0': f'r{ensnum}i1p1f1',
+        'NorCPM1': f'r{ensnum}i1p1f1' if ensnum <= 10 else f'r{ensnum-10}i2p1f1'
+    }
+    run = ensemble_to_run[model_name]
+
+    return run
+
+
 def find_dcpp_data(event_df, model_name):
     """Find DCPP data for a dataframe of events."""
 
-    assert model_name in ['CanESM5']
+    init_adjustment = {
+        'CanESM5': -1,
+        'CMCC-CM2-SR5': 0,
+        'EC-Earth3': 0,
+        'HadGEM3-GC31-MM': 0,
+        'IPSL-CM6A-LR': -1,
+        'MIROC6': 0,
+        'MPI-ESM1-2-HR': 0,
+        'MRI-ESM2-0': 0,
+        'NorCPM1': 0,
+    }
+
+    assert model_name in init_adjustment
     
     for index, row in event_df.iterrows():
-        init_date = int(row['init_date'].strftime('%Y')) - 1
+        init_date = int(row['init_date'].strftime('%Y')) + init_adjustment[model_name]
         ensemble = int(row['ensemble']) + 1
+        run = ensemble_to_run(model_name, ensemble)
         start_date = row['event_start'].strftime('%Y-%m-%d')
         wddx_value = row['event_length']
-        print(f'{wddx_value} day event starting {start_date}: initialisation year {init_date}, ensemble member r{ensemble}')
-        available_data = glob.glob(f'/g/data/oi10/replicas/CMIP6/DCPP/*/{model_name}/dcppA-hindcast/s{init_date}-r{ensemble}i1p2f1/day/*')
+        print(f'{wddx_value} day event starting {start_date}: initialisation year {init_date}, ensemble member {run}')
+        available_data = glob.glob(f'/g/data/oi10/replicas/CMIP6/DCPP/*/{model_name}/dcppA-hindcast/s{init_date}-{run}/day/*')
         for path in available_data:
             print(path)
 
