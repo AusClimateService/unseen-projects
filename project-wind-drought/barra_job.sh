@@ -30,7 +30,7 @@ unset __conda_setup
 conda activate unseen
 
 for year in $(seq 1980 2025); do
-command="fileio /g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/day/sfcWind/latest/sfcWind_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_day_${year}*.nc /g/data/xv83/unseen-projects/outputs/wind-drought/data/sfcWind_BARRA-R2_${year}_MJJ_{region}.nc --variables sfcWind --months 5 6 7 --shapefile /g/data/xv83/unseen-projects/outputs/wind-drought/shapefiles/{region}.shp --shp_overlap 0.1 --spatial_agg weighted_mean --verbose --lat_bnds -45 -10 --lon_bnds 110 160"
+command="fileio /g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/day/sfcWind/latest/sfcWind_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_day_${year}*.nc /g/data/xv83/unseen-projects/outputs/wind-drought/data/sfcWind_BARRA-R2_${year}_MJJ_${region}.nc --variables sfcWind --months 5 6 7 --shapefile /g/data/xv83/unseen-projects/outputs/wind-drought/shapefiles/${region}.shp --shp_overlap 0.1 --spatial_agg weighted_mean --verbose --lat_bnds -45 -10 --lon_bnds 110 160"
 echo ${command}
 ${command}
 done
