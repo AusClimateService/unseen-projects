@@ -1,13 +1,41 @@
 """Useful functions."""
 
 import glob
+from collections import Counter
+import calendar
 
 import numpy as np
+import matplotlib.pyplot as plt
 import xarray as xr
 import xclim as xc
 
 from unseen import array_handling
 from unseen import time_utils
+
+
+def plot_timing(event_starts, model_name):
+    """Plot the event timing."""
+
+    if model_name == 'BARRA':
+        months = event_starts.dt.month.values
+    else:
+        event_dates = event_starts.values.flatten()
+        months = []
+        for date in event_dates:
+            if type(date) != float:
+                months.append(date.month)
+
+    month_counts = Counter(months)
+    months = np.arange(1, 13)
+    counts = [month_counts[month] for month in months]
+
+    plt.bar(months, counts)
+    plt.title(f'WDDx timing - {model_name}')
+    plt.ylabel('number of events')
+    plt.xlabel('month')
+    xlabels = [calendar.month_abbr[i] for i in months]
+    plt.xticks(months, xlabels)
+    plt.show()
 
 
 def ensemble_to_run(model_name, ensnum):
