@@ -23,13 +23,14 @@ INFO:root:lat index: 0, lon index: 9
 INFO:root:lat index: 0, lon index: 10
 INFO:root:lat index: 0, lon index: 11
 INFO:root:start: BCC-CSM2-MR
+INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
+INFO:root:raw pass: CMCC-CM2-SR5
 INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
@@ -46,6 +47,7 @@ INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
+INFO:root:raw pass: MIROC6
 INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
@@ -92,7 +94,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:raw pass: CAFE
 INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
@@ -149,6 +150,7 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
+INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
@@ -161,11 +163,11 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
+INFO:root:raw pass: MPI-ESM1-2-HR
 INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:raw pass: MRI-ESM2-0
 INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
@@ -175,8 +177,6 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 2, lon index: 11
 INFO:root:start: BCC-CSM2-MR
-INFO:root:raw pass: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -184,15 +184,14 @@ INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:raw pass: CMCC-CM2-SR5
 INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
+INFO:root:raw pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -262,7 +261,6 @@ INFO:root:lat index: 2, lon index: 13
 INFO:root:lat index: 3, lon index: 0
 INFO:root:lat index: 3, lon index: 1
 INFO:root:start: BCC-CSM2-MR
-INFO:root:raw pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -276,21 +274,17 @@ INFO:root:start: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:raw pass: MIROC6
 INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -298,7 +292,6 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 3, lon index: 2
@@ -311,7 +304,6 @@ INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
 INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -331,7 +323,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -348,12 +339,9 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -374,11 +362,9 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -451,12 +437,10 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -464,6 +448,7 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
+INFO:root:raw pass: MPI-ESM1-2-HR
 INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
@@ -472,7 +457,6 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 3, lon index: 10
@@ -505,7 +489,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -519,7 +502,6 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 3, lon index: 11
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -531,11 +513,9 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -547,7 +527,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -561,12 +540,10 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 3, lon index: 12
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
 INFO:root:raw pass: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -574,11 +551,9 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
@@ -591,7 +566,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -614,8 +588,6 @@ INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -650,45 +622,10 @@ INFO:root:start: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:quantile pass: CMCC-CM2-SR5
-INFO:root:end: CMCC-CM2-SR5
-INFO:root:start: CanESM5
-INFO:root:quantile pass: CanESM5
-INFO:root:end: CanESM5
-INFO:root:start: EC-Earth3
-INFO:root:quantile pass: EC-Earth3
-INFO:root:end: EC-Earth3
-INFO:root:start: IPSL-CM6A-LR
-INFO:root:quantile pass: IPSL-CM6A-LR
-INFO:root:end: IPSL-CM6A-LR
-INFO:root:start: MIROC6
-INFO:root:quantile pass: MIROC6
-INFO:root:end: MIROC6
-INFO:root:start: MPI-ESM1-2-HR
-INFO:root:quantile pass: MPI-ESM1-2-HR
-INFO:root:end: MPI-ESM1-2-HR
-INFO:root:start: MRI-ESM2-0
-INFO:root:raw pass: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
-INFO:root:quantile pass: MRI-ESM2-0
-INFO:root:end: MRI-ESM2-0
-INFO:root:start: NorCPM1
-INFO:root:raw pass: NorCPM1
-INFO:root:quantile pass: NorCPM1
-INFO:root:end: NorCPM1
-INFO:root:lat index: 4, lon index: 3
-INFO:root:start: BCC-CSM2-MR
-INFO:root:quantile pass: BCC-CSM2-MR
-INFO:root:end: BCC-CSM2-MR
-INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
-INFO:root:quantile pass: CAFE
-INFO:root:end: CAFE
-INFO:root:start: CMCC-CM2-SR5
+INFO:root:raw pass: CMCC-CM2-SR5
 INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
@@ -700,13 +637,14 @@ INFO:root:raw pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
+INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
+INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -714,7 +652,50 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:raw pass: NorCPM1
+INFO:root:mean pass: NorCPM1
+INFO:root:quantile pass: NorCPM1
+INFO:root:end: NorCPM1
+INFO:root:lat index: 4, lon index: 3
+INFO:root:start: BCC-CSM2-MR
+INFO:root:mean pass: BCC-CSM2-MR
+INFO:root:quantile pass: BCC-CSM2-MR
+INFO:root:end: BCC-CSM2-MR
+INFO:root:start: CAFE
+INFO:root:mean pass: CAFE
+INFO:root:quantile pass: CAFE
+INFO:root:end: CAFE
+INFO:root:start: CMCC-CM2-SR5
+INFO:root:raw pass: CMCC-CM2-SR5
+INFO:root:mean pass: CMCC-CM2-SR5
+INFO:root:quantile pass: CMCC-CM2-SR5
+INFO:root:end: CMCC-CM2-SR5
+INFO:root:start: CanESM5
+INFO:root:mean pass: CanESM5
+INFO:root:quantile pass: CanESM5
+INFO:root:end: CanESM5
+INFO:root:start: EC-Earth3
+INFO:root:raw pass: EC-Earth3
+INFO:root:mean pass: EC-Earth3
+INFO:root:quantile pass: EC-Earth3
+INFO:root:end: EC-Earth3
+INFO:root:start: IPSL-CM6A-LR
+INFO:root:raw pass: IPSL-CM6A-LR
+INFO:root:mean pass: IPSL-CM6A-LR
+INFO:root:quantile pass: IPSL-CM6A-LR
+INFO:root:end: IPSL-CM6A-LR
+INFO:root:start: MIROC6
+INFO:root:mean pass: MIROC6
+INFO:root:quantile pass: MIROC6
+INFO:root:end: MIROC6
+INFO:root:start: MPI-ESM1-2-HR
+INFO:root:quantile pass: MPI-ESM1-2-HR
+INFO:root:end: MPI-ESM1-2-HR
+INFO:root:start: MRI-ESM2-0
+INFO:root:mean pass: MRI-ESM2-0
+INFO:root:quantile pass: MRI-ESM2-0
+INFO:root:end: MRI-ESM2-0
+INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 4, lon index: 4
@@ -755,6 +736,7 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 4, lon index: 5
@@ -779,6 +761,7 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
+INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -845,15 +828,12 @@ INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
@@ -861,7 +841,6 @@ INFO:root:start: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
@@ -869,8 +848,6 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:raw pass: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -883,6 +860,7 @@ INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
 INFO:root:raw pass: CAFE
+INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -894,6 +872,7 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
+INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
@@ -923,7 +902,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -939,6 +917,7 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
+INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -946,7 +925,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -962,7 +940,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:raw pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -970,7 +947,6 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
@@ -987,7 +963,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -996,6 +971,7 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 4, lon index: 11
@@ -1004,7 +980,7 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
+INFO:root:raw pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -1038,6 +1014,7 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 4, lon index: 12
@@ -1046,8 +1023,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:raw pass: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -1059,8 +1034,6 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -1068,7 +1041,6 @@ INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
@@ -1085,6 +1057,7 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 4, lon index: 13
 INFO:root:start: BCC-CSM2-MR
+INFO:root:raw pass: BCC-CSM2-MR
 INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
@@ -1097,7 +1070,6 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:raw pass: CanESM5
 INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
@@ -1106,7 +1078,6 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
@@ -1134,6 +1105,7 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
+INFO:root:raw pass: CAFE
 INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
@@ -1146,9 +1118,11 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
+INFO:root:raw pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
+INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
@@ -1157,6 +1131,7 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
+INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -1174,7 +1149,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -1187,7 +1161,6 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
@@ -1201,15 +1174,12 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:raw pass: NorCPM1
 INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
@@ -1219,7 +1189,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -1231,7 +1200,7 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
+INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -1239,14 +1208,13 @@ INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
+INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -1255,18 +1223,15 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 5, lon index: 4
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
@@ -1275,7 +1240,70 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
+INFO:root:quantile pass: IPSL-CM6A-LR
+INFO:root:end: IPSL-CM6A-LR
+INFO:root:start: MIROC6
+INFO:root:quantile pass: MIROC6
+INFO:root:end: MIROC6
+INFO:root:start: MPI-ESM1-2-HR
+INFO:root:quantile pass: MPI-ESM1-2-HR
+INFO:root:end: MPI-ESM1-2-HR
+INFO:root:start: MRI-ESM2-0
+INFO:root:quantile pass: MRI-ESM2-0
+INFO:root:end: MRI-ESM2-0
+INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
+INFO:root:quantile pass: NorCPM1
+INFO:root:end: NorCPM1
+INFO:root:lat index: 5, lon index: 5
+INFO:root:start: BCC-CSM2-MR
+INFO:root:quantile pass: BCC-CSM2-MR
+INFO:root:end: BCC-CSM2-MR
+INFO:root:start: CAFE
+INFO:root:quantile pass: CAFE
+INFO:root:end: CAFE
+INFO:root:start: CMCC-CM2-SR5
+INFO:root:quantile pass: CMCC-CM2-SR5
+INFO:root:end: CMCC-CM2-SR5
+INFO:root:start: CanESM5
+INFO:root:quantile pass: CanESM5
+INFO:root:end: CanESM5
+INFO:root:start: EC-Earth3
+INFO:root:quantile pass: EC-Earth3
+INFO:root:end: EC-Earth3
+INFO:root:start: IPSL-CM6A-LR
+INFO:root:quantile pass: IPSL-CM6A-LR
+INFO:root:end: IPSL-CM6A-LR
+INFO:root:start: MIROC6
+INFO:root:quantile pass: MIROC6
+INFO:root:end: MIROC6
+INFO:root:start: MPI-ESM1-2-HR
+INFO:root:quantile pass: MPI-ESM1-2-HR
+INFO:root:end: MPI-ESM1-2-HR
+INFO:root:start: MRI-ESM2-0
+INFO:root:quantile pass: MRI-ESM2-0
+INFO:root:end: MRI-ESM2-0
+INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
+INFO:root:quantile pass: NorCPM1
+INFO:root:end: NorCPM1
+INFO:root:lat index: 5, lon index: 6
+INFO:root:start: BCC-CSM2-MR
+INFO:root:quantile pass: BCC-CSM2-MR
+INFO:root:end: BCC-CSM2-MR
+INFO:root:start: CAFE
+INFO:root:quantile pass: CAFE
+INFO:root:end: CAFE
+INFO:root:start: CMCC-CM2-SR5
+INFO:root:quantile pass: CMCC-CM2-SR5
+INFO:root:end: CMCC-CM2-SR5
+INFO:root:start: CanESM5
+INFO:root:quantile pass: CanESM5
+INFO:root:end: CanESM5
+INFO:root:start: EC-Earth3
+INFO:root:quantile pass: EC-Earth3
+INFO:root:end: EC-Earth3
+INFO:root:start: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -1286,14 +1314,12 @@ INFO:root:start: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
-INFO:root:lat index: 5, lon index: 5
+INFO:root:lat index: 5, lon index: 7
 INFO:root:start: BCC-CSM2-MR
 INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
@@ -1303,82 +1329,7 @@ INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
-INFO:root:quantile pass: CMCC-CM2-SR5
-INFO:root:end: CMCC-CM2-SR5
-INFO:root:start: CanESM5
-INFO:root:quantile pass: CanESM5
-INFO:root:end: CanESM5
-INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
-INFO:root:quantile pass: EC-Earth3
-INFO:root:end: EC-Earth3
-INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
-INFO:root:quantile pass: IPSL-CM6A-LR
-INFO:root:end: IPSL-CM6A-LR
-INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
-INFO:root:quantile pass: MIROC6
-INFO:root:end: MIROC6
-INFO:root:start: MPI-ESM1-2-HR
-INFO:root:quantile pass: MPI-ESM1-2-HR
-INFO:root:end: MPI-ESM1-2-HR
-INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
-INFO:root:quantile pass: MRI-ESM2-0
-INFO:root:end: MRI-ESM2-0
-INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
-INFO:root:quantile pass: NorCPM1
-INFO:root:end: NorCPM1
-INFO:root:lat index: 5, lon index: 6
-INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
-INFO:root:quantile pass: BCC-CSM2-MR
-INFO:root:end: BCC-CSM2-MR
-INFO:root:start: CAFE
-INFO:root:quantile pass: CAFE
-INFO:root:end: CAFE
-INFO:root:start: CMCC-CM2-SR5
 INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
-INFO:root:quantile pass: CMCC-CM2-SR5
-INFO:root:end: CMCC-CM2-SR5
-INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
-INFO:root:quantile pass: CanESM5
-INFO:root:end: CanESM5
-INFO:root:start: EC-Earth3
-INFO:root:quantile pass: EC-Earth3
-INFO:root:end: EC-Earth3
-INFO:root:start: IPSL-CM6A-LR
-INFO:root:quantile pass: IPSL-CM6A-LR
-INFO:root:end: IPSL-CM6A-LR
-INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
-INFO:root:quantile pass: MIROC6
-INFO:root:end: MIROC6
-INFO:root:start: MPI-ESM1-2-HR
-INFO:root:quantile pass: MPI-ESM1-2-HR
-INFO:root:end: MPI-ESM1-2-HR
-INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
-INFO:root:quantile pass: MRI-ESM2-0
-INFO:root:end: MRI-ESM2-0
-INFO:root:start: NorCPM1
-INFO:root:raw pass: NorCPM1
-INFO:root:quantile pass: NorCPM1
-INFO:root:end: NorCPM1
-INFO:root:lat index: 5, lon index: 7
-INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
-INFO:root:quantile pass: BCC-CSM2-MR
-INFO:root:end: BCC-CSM2-MR
-INFO:root:start: CAFE
-INFO:root:quantile pass: CAFE
-INFO:root:end: CAFE
-INFO:root:start: CMCC-CM2-SR5
 INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
@@ -1388,17 +1339,13 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
 INFO:root:raw pass: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:raw pass: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
@@ -1409,7 +1356,7 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
+INFO:root:raw pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 5, lon index: 8
@@ -1463,8 +1410,6 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:raw pass: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
@@ -1495,8 +1440,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:raw pass: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -1504,7 +1447,6 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
@@ -1521,7 +1463,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -1554,6 +1495,7 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
+INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -1584,7 +1526,6 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
@@ -1636,6 +1577,7 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
+INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
@@ -1662,50 +1604,7 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
-INFO:root:quantile pass: CAFE
-INFO:root:end: CAFE
-INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
-INFO:root:quantile pass: CMCC-CM2-SR5
-INFO:root:end: CMCC-CM2-SR5
-INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
-INFO:root:quantile pass: CanESM5
-INFO:root:end: CanESM5
-INFO:root:start: EC-Earth3
-INFO:root:quantile pass: EC-Earth3
-INFO:root:end: EC-Earth3
-INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
-INFO:root:quantile pass: IPSL-CM6A-LR
-INFO:root:end: IPSL-CM6A-LR
-INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
-INFO:root:quantile pass: MIROC6
-INFO:root:end: MIROC6
-INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
-INFO:root:quantile pass: MPI-ESM1-2-HR
-INFO:root:end: MPI-ESM1-2-HR
-INFO:root:start: MRI-ESM2-0
-INFO:root:raw pass: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
-INFO:root:quantile pass: MRI-ESM2-0
-INFO:root:end: MRI-ESM2-0
-INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
-INFO:root:quantile pass: NorCPM1
-INFO:root:end: NorCPM1
-INFO:root:lat index: 6, lon index: 2
-INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
-INFO:root:quantile pass: BCC-CSM2-MR
-INFO:root:end: BCC-CSM2-MR
-INFO:root:start: CAFE
 INFO:root:raw pass: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -1738,85 +1637,113 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
+INFO:root:quantile pass: NorCPM1
+INFO:root:end: NorCPM1
+INFO:root:lat index: 6, lon index: 2
+INFO:root:start: BCC-CSM2-MR
+INFO:root:mean pass: BCC-CSM2-MR
+INFO:root:quantile pass: BCC-CSM2-MR
+INFO:root:end: BCC-CSM2-MR
+INFO:root:start: CAFE
+INFO:root:quantile pass: CAFE
+INFO:root:end: CAFE
+INFO:root:start: CMCC-CM2-SR5
+INFO:root:raw pass: CMCC-CM2-SR5
+INFO:root:mean pass: CMCC-CM2-SR5
+INFO:root:quantile pass: CMCC-CM2-SR5
+INFO:root:end: CMCC-CM2-SR5
+INFO:root:start: CanESM5
+INFO:root:quantile pass: CanESM5
+INFO:root:end: CanESM5
+INFO:root:start: EC-Earth3
+INFO:root:quantile pass: EC-Earth3
+INFO:root:end: EC-Earth3
+INFO:root:start: IPSL-CM6A-LR
+INFO:root:mean pass: IPSL-CM6A-LR
+INFO:root:quantile pass: IPSL-CM6A-LR
+INFO:root:end: IPSL-CM6A-LR
+INFO:root:start: MIROC6
+INFO:root:mean pass: MIROC6
+INFO:root:quantile pass: MIROC6
+INFO:root:end: MIROC6
+INFO:root:start: MPI-ESM1-2-HR
+INFO:root:mean pass: MPI-ESM1-2-HR
+INFO:root:quantile pass: MPI-ESM1-2-HR
+INFO:root:end: MPI-ESM1-2-HR
+INFO:root:start: MRI-ESM2-0
+INFO:root:quantile pass: MRI-ESM2-0
+INFO:root:end: MRI-ESM2-0
+INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 6, lon index: 3
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:raw pass: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:raw pass: EC-Earth3
 INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:raw pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:raw pass: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 6, lon index: 4
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
+INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
+INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 6, lon index: 5
@@ -1827,7 +1754,6 @@ INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -1860,6 +1786,7 @@ INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
+INFO:root:raw pass: CMCC-CM2-SR5
 INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
@@ -1894,44 +1821,39 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
+INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:raw pass: CMCC-CM2-SR5
 INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
+INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
+INFO:root:raw pass: MRI-ESM2-0
 INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:raw pass: NorCPM1
-INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 6, lon index: 8
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -1960,10 +1882,10 @@ INFO:root:start: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 6, lon index: 9
@@ -1972,7 +1894,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -2029,7 +1950,6 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
@@ -2038,7 +1958,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -2070,7 +1989,6 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
@@ -2079,6 +1997,7 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
+INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
@@ -2086,7 +2005,6 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 6, lon index: 12
@@ -2140,7 +2058,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -2148,7 +2065,6 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:raw pass: CanESM5
 INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
@@ -2163,10 +2079,10 @@ INFO:root:start: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
+INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2174,7 +2090,6 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 7, lon index: 3
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -2243,14 +2158,12 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 7, lon index: 5
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -2261,46 +2174,38 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:raw pass: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 7, lon index: 6
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -2308,11 +2213,9 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2358,7 +2261,6 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 7, lon index: 8
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -2366,7 +2268,6 @@ INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
 INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -2378,7 +2279,6 @@ INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
 INFO:root:raw pass: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -2390,10 +2290,11 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
+INFO:root:raw pass: NorCPM1
+INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 7, lon index: 9
@@ -2402,6 +2303,7 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
+INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -2412,11 +2314,9 @@ INFO:root:start: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:raw pass: IPSL-CM6A-LR
 INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
@@ -2429,7 +2329,6 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2437,7 +2336,6 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 7, lon index: 10
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
@@ -2465,11 +2363,9 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2482,7 +2378,6 @@ INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
-INFO:root:mean pass: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
@@ -2491,10 +2386,10 @@ INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
+INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -2510,7 +2405,6 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2540,6 +2434,7 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
+INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -2611,14 +2506,12 @@ INFO:root:start: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
-INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -2630,8 +2523,6 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:raw pass: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2666,7 +2557,7 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
+INFO:root:raw pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2674,14 +2565,12 @@ INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 8, lon index: 8
 INFO:root:start: BCC-CSM2-MR
-INFO:root:mean pass: BCC-CSM2-MR
 INFO:root:quantile pass: BCC-CSM2-MR
 INFO:root:end: BCC-CSM2-MR
 INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -2692,7 +2581,6 @@ INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
@@ -2833,7 +2721,6 @@ INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
-INFO:root:mean pass: NorCPM1
 INFO:root:quantile pass: NorCPM1
 INFO:root:end: NorCPM1
 INFO:root:lat index: 9, lon index: 6
@@ -2846,7 +2733,6 @@ INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
 INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -2854,7 +2740,6 @@ INFO:root:mean pass: CanESM5
 INFO:root:quantile pass: CanESM5
 INFO:root:end: CanESM5
 INFO:root:start: EC-Earth3
-INFO:root:mean pass: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
@@ -2870,7 +2755,6 @@ INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
-INFO:root:mean pass: MRI-ESM2-0
 INFO:root:quantile pass: MRI-ESM2-0
 INFO:root:end: MRI-ESM2-0
 INFO:root:start: NorCPM1
@@ -2886,7 +2770,6 @@ INFO:root:start: CAFE
 INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -2897,11 +2780,9 @@ INFO:root:start: EC-Earth3
 INFO:root:quantile pass: EC-Earth3
 INFO:root:end: EC-Earth3
 INFO:root:start: IPSL-CM6A-LR
-INFO:root:mean pass: IPSL-CM6A-LR
 INFO:root:quantile pass: IPSL-CM6A-LR
 INFO:root:end: IPSL-CM6A-LR
 INFO:root:start: MIROC6
-INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
@@ -2926,7 +2807,6 @@ INFO:root:quantile pass: CAFE
 INFO:root:end: CAFE
 INFO:root:start: CMCC-CM2-SR5
 INFO:root:raw pass: CMCC-CM2-SR5
-INFO:root:mean pass: CMCC-CM2-SR5
 INFO:root:quantile pass: CMCC-CM2-SR5
 INFO:root:end: CMCC-CM2-SR5
 INFO:root:start: CanESM5
@@ -2945,7 +2825,6 @@ INFO:root:mean pass: MIROC6
 INFO:root:quantile pass: MIROC6
 INFO:root:end: MIROC6
 INFO:root:start: MPI-ESM1-2-HR
-INFO:root:mean pass: MPI-ESM1-2-HR
 INFO:root:quantile pass: MPI-ESM1-2-HR
 INFO:root:end: MPI-ESM1-2-HR
 INFO:root:start: MRI-ESM2-0
