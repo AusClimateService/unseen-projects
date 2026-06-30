@@ -30,7 +30,7 @@ make metric-forecast-analysis MODEL=CanESM5 PROJECT_DETAILS=project-jasper/jaspe
 
 ### Spatial analysis
 ```bash
-make metric-forecast-spatial-analysis MODEL=CanESM5 PROJECT_DETAILS=project-jasper/jasper_config.mk MODEL_DETAILS=dataset_makefiles/CanESM5_dcppA-hindcast_config.mk OBS_DETAILS=dataset_makefiles/AGCD-precip_config.mk
+make metric-forecast-spatial-analysis MODEL=CanESM5 PROJECT_DETAILS=project-txx/txx_config.mk MODEL_DETAILS=dataset_makefiles/CanESM5_dcppA-hindcast_config.mk OBS_DETAILS=dataset_makefiles/AGCD-tmax_config.mk
 ```
 
 ## Custom usage

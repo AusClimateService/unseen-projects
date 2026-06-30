@@ -9,3 +9,6 @@ __pycache__/
 
 # PBS job output
 **/*.sh.*
+
+# Ignore draft folder 
+drafts/
