@@ -44,6 +44,7 @@ def get_obs_data(metric, location, dataset='AGCD-CSIRO'):
     """Get obs data"""
 
     assert dataset in ['AGCD-CSIRO', 'ERA5']
+    start_date = '1940-01-01' if dataset == 'ERA5' else '1910-01-01'
     var = {'txx': 'tasmax', 'rx1day': 'pr'}
     obs_file = glob.glob(f'/g/data/xv83/unseen-projects/outputs/bias/data/{metric}_{dataset}_*_AUS300i.nc')[0]
     ds_obs = fileio.open_dataset(obs_file)
@@ -52,7 +53,7 @@ def get_obs_data(metric, location, dataset='AGCD-CSIRO'):
     else:
         lat_index, lon_index = location
         da_obs = ds_obs[var[metric]].isel({'lat': lat_index, 'lon': lon_index})
-    da_obs = da_obs.sel(time=slice('1940-01-01', '2025-12-31'))
+    da_obs = da_obs.sel(time=slice(start_date, '2025-12-31'))
     da_obs = da_obs.compute()
 
     return da_obs
@@ -549,6 +550,9 @@ def uncertainty_breakdown(return_df, gev_spread_df):
     B2 = bias_spread
 
     T2 = G2 + M2 + B2
+    
+    manual_total = return_df.filter(like='model-bc').var(axis=1)
+    TMB2 = manual_total
 
     ave_model_bc_mean = return_df.filter(like='model-bc-mean').mean(axis=1)
 
@@ -559,7 +563,7 @@ def uncertainty_breakdown(return_df, gev_spread_df):
     OM2 = return_df.filter(like='obs').var(axis=1)
     OT2 = OG2 + OM2
 
-    uncertainty = [G2, M2, B2, T2, OG2, OM2, OT2]
+    uncertainty = [G2, M2, B2, T2, TMB2, OG2, OM2, OT2]
 
     return obs, ave_model_bc_mean, uncertainty
 

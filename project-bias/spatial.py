@@ -68,6 +68,7 @@ def main(args):
     M2_array = np.zeros([nlevels, nlats, nlons])
     B2_array = np.zeros([nlevels, nlats, nlons])
     T2_array = np.zeros([nlevels, nlats, nlons])
+    TMB2_array = np.zeros([nlevels, nlats, nlons])
     OG2_array = np.zeros([nlevels, nlats, nlons])
     OM2_array = np.zeros([nlevels, nlats, nlons])
     OT2_array = np.zeros([nlevels, nlats, nlons])
@@ -93,12 +94,13 @@ def main(args):
 
             if nmodels >= 2:
                 obs, MMM, uncertainty = utils.uncertainty_breakdown(return_df, gev_spread_df)
-                G2, M2, B2, T2, OG2, OM2, OT2 = uncertainty
+                G2, M2, B2, T2, TMB2, OG2, OM2, OT2 = uncertainty
                 for level_index, return_period in enumerate(return_periods):
                     G2s = extract_closest_row(G2, return_period)
                     M2s = extract_closest_row(M2, return_period)
                     B2s = extract_closest_row(B2, return_period)
                     T2s = extract_closest_row(T2, return_period)
+                    TMB2s = extract_closest_row(TMB2, return_period)
                     OG2s = extract_closest_row(OG2, return_period)
                     OM2s = extract_closest_row(OM2, return_period)
                     OT2s = extract_closest_row(OT2, return_period)
@@ -108,6 +110,7 @@ def main(args):
                     M2_array[level_index, lat_index, lon_index] = M2s
                     B2_array[level_index, lat_index, lon_index] = B2s
                     T2_array[level_index, lat_index, lon_index] = T2s
+                    TMB2_array[level_index, lat_index, lon_index] = TMB2s
                     OG2_array[level_index, lat_index, lon_index] = OG2s
                     OM2_array[level_index, lat_index, lon_index] = OM2s
                     OT2_array[level_index, lat_index, lon_index] = OT2s
@@ -125,6 +128,7 @@ def main(args):
                     M2_array[level_index, lat_index, lon_index] = np.nan
                     B2_array[level_index, lat_index, lon_index] = np.nan
                     T2_array[level_index, lat_index, lon_index] = np.nan
+                    TMB2_array[level_index, lat_index, lon_index] = np.nan
                     OG2_array[level_index, lat_index, lon_index] = OG2s
                     OM2_array[level_index, lat_index, lon_index] = OM2s
                     OT2_array[level_index, lat_index, lon_index] = OT2s
@@ -136,6 +140,7 @@ def main(args):
                     M2_array[level_index, lat_index, lon_index] = np.nan
                     B2_array[level_index, lat_index, lon_index] = np.nan
                     T2_array[level_index, lat_index, lon_index] = np.nan
+                    TMB2_array[level_index, lat_index, lon_index] = np.nan
                     OG2_array[level_index, lat_index, lon_index] = np.nan
                     OM2_array[level_index, lat_index, lon_index] = np.nan
                     OT2_array[level_index, lat_index, lon_index] = np.nan
@@ -150,6 +155,7 @@ def main(args):
             'M2': (['lev', 'lat', 'lon'], M2_array, {'long_name': 'dataset uncertainty (model)', 'units': units}),
             'B2': (['lev', 'lat', 'lon'], B2_array, {'long_name': 'bias correction uncertainty (model)', 'units': units}),
             'T2': (['lev', 'lat', 'lon'], T2_array, {'long_name': 'total model uncertainty', 'units': units}),
+            'TMB2': (['lev', 'lat', 'lon'], TMB2_array, {'long_name': 'combined dataset and bias uncertainty (model)', 'units': units}),
             'OG2': (['lev', 'lat', 'lon'], OG2_array, {'long_name': 'EVA uncertainty (AGCD)', 'units': units}),
             'OM2': (['lev', 'lat', 'lon'], OM2_array, {'long_name': 'dataset uncertainty (obs)', 'units': units}),
             'OT2': (['lev', 'lat', 'lon'], OT2_array, {'long_name': 'total observations uncertainty', 'units': units}),
