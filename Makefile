@@ -3,7 +3,7 @@ include ${MODEL_DETAILS}
 include ${OBS_DETAILS}
 
 DASK_CONFIG=/g/data/xv83/unseen-projects/code/dask_local.yml
-ENV_DIR?=/g/data/xv83/unseen-projects/unseen_venv
+ENV_DIR?=/g/data/xv83/dbi599/miniconda3/envs/unseen
 FIG_DIR?=${PROJECT_DIR}/figures
 NOTEBOOK_IN_DIR?=/g/data/xv83/unseen-projects/code
 NOTEBOOK_OUT_DIR?=/g/data/xv83/unseen-projects/code\
