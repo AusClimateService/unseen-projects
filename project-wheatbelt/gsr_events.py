@@ -10,7 +10,7 @@ import pandas as pd
 import scipy
 import xarray as xr
 
-from process_gsr_data import home, gsr_data_regions
+from process_gsr_data import gsr_data_regions
 
 
 @dataclass
@@ -22,7 +22,6 @@ class Events:
         n: int = 3,
         operator: str = "less",
         fixed_duration: bool = True,
-        minimize: bool = False,
     ):
         """Initialise event metadata."""
         # Number of event years / event minimum duration
@@ -32,119 +31,122 @@ class Events:
         self.operator = operator
         # Define events that are always min_duration long
         self.fixed_duration = fixed_duration
-        # Event contiguous region based on the lowest/highest total
-        self.minimize = minimize
 
         # Figure labels
         if self.operator == "less":
             self.type = "LGSR"
-            self.threshold = 3
+            self.threshold = 1  # 3
             self.sym = "≤"
             self.alt_name = "dry"
             self.name = "low"
         else:
             self.type = "HGSR"
-            self.threshold = 8
+            self.threshold = 3  # 8
             self.sym = "≥"
             self.alt_name = "wet"
             self.name = "high"
-
-        if not self.fixed_duration:
-            self.type += "_max"
-
-        if not self.minimize and self.fixed_duration:
-            self.type += "_first"
 
         self.decile = f"{self.sym}{self.threshold} decile"
         self.tercile = f"{self.sym}{self.threshold} tercile"
 
 
-def gsr_events(data, decile, time="time", **kwargs):
-    """Get events & event properties (vectorize get_events & get_event_properties)."""
+def get_events_1d(
+    da,
+    threshold,
+    min_duration,
+    operator="less",
+    fixed_duration=True,
+):
+    """Label contiguous regions of da <=/=> threshold with duration >= min_duration.
 
-    events = xr.apply_ufunc(
-        get_events,
-        decile,
-        input_core_dims=[[time]],
-        output_core_dims=[[time]],
-        vectorize=True,
-        dask="parallelized",
-        kwargs=kwargs,
-        output_dtypes=["float64"],
-    )
-    variables = [
-        "id",
-        "index_start",
-        "index_end",
-        "duration",
-        "time_start",
-        "time_end",
-        "gsr_mean",
-        "gsr_max",
-        "gsr_min",
-        "grs_next",
-        "decile_next",
-    ]
+    Parameters
+    ----------
+    da : xr.DataArray
+        1D array of data values
+    threshold : int
+        Threshold for an event
+    min_duration : int
+        Minimum duration of event
+    operator : {"less", "greater"}, optional
+        Operator to apply a threshold
+    fixed_duration : bool, optional
+        Define events that are always min_duration long
 
-    # Max number of events (for length of dimension)
-    n_events = events.max().load().item()
+    Notes
+    -----
+    - Calculates events in which there are a minimum number of values in
+    a row at or below/above a threshold (no overlapping years)
+    - Used for plots of frequency, avg rainfall & max duration of events
 
-    # Convert times to numeric (days since epoch - avoids apply_ufunc dtype error)
-    if data["time"].dtype == "datetime64[ns]":
-        epoch = np.datetime64("1900-01-01T00:00:00")
-        times = (data["time"] - epoch) / np.timedelta64(1, "D")
+    Example
+    -------
+    - Find events of duration >= min_duration:
+        get_events_1d(d, t, min_duration, fixed_duration=False)
+    - Find events of duration == min_duration:
+        get_events_1d(d, t, min_duration, fixed_duration=True)
+    """
+
+    assert operator in ["less", "greater"], "Operator must be 'less' or 'greater'"
+    assert min_duration >= 1, "min_duration must be >= 1"
+    assert isinstance(min_duration, int)
+    assert da.ndim == 1, "Input data must be 1D"
+    if np.isnan(da).all():
+        # Return NaNs if all input data is NaN
+        return da * np.nan
+
+    # Threshold mask
+    if operator == "less":
+        da_mask = da <= threshold
     else:
-        # Assumes "time" is the actual time variable
-        times = data["time"]
+        da_mask = da >= threshold
 
-    dtypes = []
-    for v in variables:
-        dtype = "float64" if "time" not in v else str(times.dtype)
-        dtypes.append(dtype)
+    # Find contiguous regions of da_mask == True
+    # da => events: assigns ID for each contiguous region
+    events_orig, n_events = scipy.ndimage.label(da_mask)
 
-    da_list = xr.apply_ufunc(
-        get_event_properties,
-        data.chunk({time: -1}),
-        decile.chunk({time: -1}),
-        events,
-        times.chunk({time: -1}),
-        input_core_dims=[[time], [time], [time], [time]],
-        output_core_dims=[["event"] for _ in range(len(variables))],
-        vectorize=True,
-        dask="parallelized",
-        kwargs=dict(n_events=n_events, variables=variables),
-        output_dtypes=dtypes,
-        dask_gufunc_kwargs={"output_sizes": {"event": n_events}},
-    )
+    # This will be updated to remove event IDs that do not meet criteria
+    events = events_orig.copy()
 
-    # Create dataset from output DataArrays
-    ds = xr.Dataset(coords={"event": np.arange(n_events)})
-    for v, da in zip(variables, da_list):
-        if "time" in v and data["time"].dtype == "datetime64[ns]":
-            # Convert times back to datetime64[ns]
-            ds[v] = da * np.timedelta64(1, "D") + epoch
-        else:
-            ds[v] = da
-    return events, ds
+    # Iterate through each event ID to check event duration criteria
+    # (NB `ev` only corresponds to `events_orig`)
+    for ev in range(1, n_events + 1):
+        # Indices of values within the event
+        inds = np.nonzero(events_orig == ev)
+
+        # Count number of unmasked elements
+        duration = np.count_nonzero(inds)  # events_orig[inds].count()
+
+        # Enforce event lower limit (and upper limit if requested)
+        if duration < min_duration or (fixed_duration and duration != min_duration):
+            # Delete event ID
+            events[inds] = 0
+            # Roll back following event IDs
+            events[np.nonzero(events_orig > ev)] -= 1
+            continue
+
+        if fixed_duration:
+            assert len(events_orig[inds]) == min_duration
+
+    return events
 
 
-def get_event_properties(
+def get_event_properties_1d(
     data,
-    decile,
+    quantile,
     events,
     times,
     n_events,
     variables,
 ):
-    """Get consecutive year event properties (use with apply_func for extra dims).
+    """Get consecutive year event properties .
 
     Parameters
     ----------
     data : array-like
         Rainfall timeseries
-    decile : array-like
-        Decile timeseries
-    events : xa.DataArray
+    quantile : array-like
+        Quantile timeseries
+    events : xr.DataArray
         Time series of labeled events
     times : array-like
         Time values
@@ -157,7 +159,14 @@ def get_event_properties(
     -------
     list of xarray.Dataset
         DataArrays of event properties (ragged arrays)
+
+    Notes
+    -----
+    - This function is overly complicated to work with xarray.apply_ufunc
+    (doesn't like mixed output sizes / datasets).
+    See `get_gsr_events` for vectorized version
     """
+
     # Create dataset to store event properties
     ds = xr.Dataset(coords={"event": np.arange(n_events)})
 
@@ -194,208 +203,156 @@ def get_event_properties(
 
         if inds[-1] + 1 < len(data):
             ds["grs_next"][loc] = data[inds[-1] + 1]  # Next year pr
-            ds["decile_next"][loc] = decile[inds[-1] + 1]  # Next year decile
+            ds["quantile_next"][loc] = quantile[inds[-1] + 1]  # Next year quantile
+        ds["total_samples"][loc] = len(data[~np.isnan(data)])
 
     return tuple([ds[v] for v in variables])
 
 
-def get_events(
-    d,
-    threshold,
-    min_duration,
-    operator="less",
-    fixed_duration=True,
-    minimize=True,
-):
-    """Label contiguous regions of d <=/=> decile_threshold with duration >= min_duration.
+def get_gsr_events(da, da_quantile, time_dim="time", **kwargs):
+    """Get events & event properties
+
+    This function vectorizes `get_events_1d` & `get_event_properties_1d`.
 
     Parameters
     ----------
-    d : xr.DataArray
-        1D array of decile values
-    decile_threshold : int
-        Decile threshold for an event
-    min_duration : int
-        Minimum duration of event.
-    operator : {"less", "greater"}, optional
-        Operator to apply a threshold
-    fixed_duration : bool, optional
-        Define events that are always min_duration long
-    minimize : bool, optional
-        Select events within contiguous regions with the lowest/highest overall value
+    da : xr.DataArray
+        Data values (e.g., rainfall)
+    da_quantile : xr.DataArray
+        Data converted to quantiles
+    time_dim : str, default "time"
+        Name of the core time dimension in which to search for events
+    **kwargs : dict
+        Additional arguments to pass to `get_events_1d`
 
-    Notes
-    -----
-    - Calculates events in which there are a minimum number of values in
-    a row at or below/above a threshold (no overlapping years)
-    - When there are more than the minimum consecutive values, the events
-    are chosen to minimize/maximize their overall value, whilst retaining
-    the maximum number of events
-    - Used for plots of frequency, avg rainfall & max duration of events
+    Returns
+    -------
+    events : xr.DataArray
+        Time series of labeled events
+    ds : xr.Dataset
+        Dataset of event properties
 
     Example
     -------
-    - Find events of duration >= min_duration:
-        get_events(d, t, min_duration, fixed_duration=False, minimize=True)
-    - Find events of duration == min_duration:
-        get_events(d, t, min_duration, fixed_duration=True, minimize=True)
+    - Find 3-year low tercile events in DCPP model data:
+    events, ds = get_gsr_events(
+        da,
+        da_quantile,
+        time_dim="lead_time",
+        threshold=1,
+        min_duration=3,
+        operator="less",
+        fixed_duration=True,
+    )
+
+    Notes
+    -----
+    - da and da_quantile must have dim 'time' (but searches events along time_dim)
+    - Super tedious workaround to get around xarray.apply_ufunc limitations
+    with mixed output sizes / datasets.
     """
 
-    if np.isnan(d).all():
-        # Return NaNs if all input data is NaN
-        return d * np.nan
+    # Get time series of labeled events
+    events = xr.apply_ufunc(
+        get_events_1d,
+        da_quantile,
+        input_core_dims=[[time_dim]],
+        output_core_dims=[[time_dim]],
+        vectorize=True,
+        dask="parallelized",
+        kwargs=kwargs,
+        output_dtypes=["float64"],
+    )
 
-    # Threshold mask
-    if operator == "less":
-        m = d <= threshold
+    # List of event properties to calculate (expected output variables)
+    variables = [
+        "id",
+        "index_start",
+        "index_end",
+        "duration",
+        "time_start",
+        "time_end",
+        "gsr_mean",
+        "gsr_max",
+        "gsr_min",
+        "grs_next",
+        "quantile_next",
+        "total_samples",
+    ]
+
+    # Max number of events (for length of dimension)
+    n_events = events.max().load().item()  # Max event ID
+
+    # Convert time to numeric if datetime64[ns] (avoids issues with dask)
+    if da["time"].dtype in ["datetime64[ns]"]:
+        epoch = np.datetime64("1900-01-01T00:00:00")
+        times = (da["time"] - epoch) / np.timedelta64(1, "D")
     else:
-        m = d >= threshold
+        # Assumes "time" is the actual time variable
+        times = da["time"]
 
-    # Find contiguous regions of m = True
-    events_init, n_events = scipy.ndimage.label(m)
-    events = events_init.copy()
+    # Define output dtypes for event properties
+    dtypes = []
+    for v in variables:
+        dtype = "float64" if "time" not in v else str(times.dtype)
+        dtypes.append(dtype)
 
-    # Find all events of duration >= thresholdin_duration
-    for ev in range(1, n_events + 1):
-        ev_mask = events_init == ev
+    da_list = xr.apply_ufunc(
+        get_event_properties_1d,
+        da.chunk({time_dim: -1}),
+        da_quantile.chunk({time_dim: -1}),
+        events,
+        times.chunk({time_dim: -1}),
+        input_core_dims=[[time_dim], [time_dim], [time_dim], [time_dim]],
+        output_core_dims=[["event"] for _ in range(len(variables))],
+        vectorize=True,
+        dask="parallelized",
+        kwargs=dict(n_events=n_events, variables=variables),
+        output_dtypes=dtypes,
+        dask_gufunc_kwargs={"output_sizes": {"event": n_events}},
+    )
 
-        duration = (ev_mask).sum()
-        inds = np.arange(len(d), dtype=int)[ev_mask]
+    # Create dataset from output DataArrays
+    ds = xr.Dataset(coords={"event": np.arange(n_events)})
+    for v, dv in zip(variables, da_list):
+        if "time" in v and da["time"].dtype == "datetime64[ns]":
+            # Convert times back to datetime64[ns]
+            ds[v] = dv * np.timedelta64(1, "D") + epoch
+        else:
+            ds[v] = dv
 
-        # Drop labels with duration < min_duration & reset count
-        if duration < min_duration:
-            # Delete event number & update event numbers for the rest of the array
-            events[inds[0] :] -= 1
-            events[inds] = 0
-            events[events_init == 0] = 0
-            continue
+    ds["total_samples"] = ds["total_samples"].isel(
+        event=0, drop=True
+    )  # Duplicated for each event for consistent output
 
-        if fixed_duration:
-            # Maximum number of min_duration chunks
-            max_sub_events = duration // min_duration
-            remainder = duration % min_duration
-
-            # Event meets criteria (no change) or should be evenly split into min_duration chunks
-            if remainder == 0 or not minimize:
-                for i in range(max_sub_events):
-                    # Increase id of following events
-                    index_next = inds[0] + i * min_duration
-                    events[index_next:] += min(i, 1)
-                    events[events_init == 0] = 0
-
-                if remainder > 0:
-                    # Set value of remaining time steps to zero
-                    events[inds[-remainder] : inds[-remainder] + remainder] = 0
-
-            # Pick the lowest decile events within regions of consecutive values
-            else:
-                d_subset = d[ev_mask]
-                # Indexes of the start of a 3-year run in the subset
-                inds_subset = np.arange(duration - min_duration + 1, dtype=int)
-                # 3-year sum starting at each index in the subset
-                ev_sum = np.array(
-                    [sum(d_subset[i : i + min_duration]).item() for i in inds_subset]
-                )
-
-                # Find the lowest 3-year sum in the subset (duration less than 2x min_duration)
-                if max_sub_events == 1:
-                    if operator == "less":
-                        i = np.argmin(ev_sum)  # Index of lowest 3-year sum
-                    else:
-                        i = np.argmax(ev_sum)  # Index of lowest 3-year sum
-                    events[
-                        inds[
-                            (i > np.arange(duration))
-                            | (np.arange(duration) >= i + min_duration)
-                        ]
-                    ] = 0
-
-                # Find the max number of min_duration chunks with the lowest overall value.
-                # i.e., 10 consecutive times will be split into 3 non-overlapping events with the minimum overall total.
-                else:
-                    # Finds the minimum 3-year sum, remove these elements and repeat to find the next smallest 3-year sum.
-                    # Start at the jth lowest sum to find different combinations (i.e., because
-                    # selecting the smallest 3-year sum may not be the smallest overall option).
-                    ev_alts = []
-                    for j in range(duration - min_duration + 1):
-                        # Reset arrays for each combination trial.
-                        ev_sum_ = ev_sum.copy()
-                        inds_subset_ = inds_subset.copy()
-                        ev_inds = []  # event start index
-
-                        # Find indexes for each 3-year chunk in the subset
-                        for k in range(max_sub_events):
-                            sort_inds = np.argsort(ev_sum_)
-                            if operator == "greater":
-                                sort_inds = sort_inds[::-1]
-
-                            if k == 0:
-                                sort_inds = sort_inds[j:]  # Start at jth lowest chunk
-                            i = inds_subset_[sort_inds[0]]
-
-                            # Drop the indexes of this event (and the previous 2 values in ev_sum, as
-                            # they are based on days that would overlap with the current event)
-                            inds_to_drop_mask = (
-                                inds_subset_ < max(i - (min_duration - 1), 0)
-                            ) | (inds_subset_ > i + (min_duration - 1))
-                            ev_sum_ = ev_sum_[inds_to_drop_mask]
-                            inds_subset_ = inds_subset_[inds_to_drop_mask]
-                            ev_inds.append(i)
-
-                            # Stop if there are not enough days left to make another event
-                            if len(inds_subset_) == 0:
-                                break
-
-                        # Add the events to the list of options if there are enough events
-                        if len(ev_inds) >= max_sub_events:
-                            ev_alts.append(ev_inds)
-
-                    # Drop combinations that don't have unique event start & end indexes (probably can delete this line)
-                    ev_alts = np.array(ev_alts)
-
-                    ev_alts = ev_alts[
-                        [
-                            np.unique([v[i] for i in range(len(v))]).size
-                            == max_sub_events
-                            for v in ev_alts
-                        ]
-                    ]
-
-                    try:
-                        # Select the minimum sum of the lowest 3-year sums in the subset
-                        alts = [
-                            np.sum([ev_sum[v[i]] for i in range(max_sub_events)])
-                            for v in ev_alts
-                        ]
-                        if operator == "less":
-                            ev_inds = ev_alts[np.argmin(alts)]
-                        else:
-                            ev_inds = ev_alts[np.argmax(alts)]
-
-                    except Exception as e:
-                        print(ev_inds, alts, max_sub_events)
-                        print(e)
-
-                    # Reset & assign an event number for each event found in the subset
-                    # Current event number (ev doesn't get updated)
-                    ev_id = events[ev_mask][0]
-                    new = events[ev_mask].copy() * 0  # Set all events in subset to 0
-                    for a, i in enumerate(sorted(ev_inds)):
-                        new[i : i + min_duration] = ev_id + a  # Assign new event number
-                    events[ev_mask] = new
-                    # Increase event numbers for the rest of the array
-                    events[inds[-1] + 1 :] += a
-
-        #  Reset non-event values to 0
-        events[events_init == 0] = 0
-    return events
+    return events, ds
 
 
-def get_events_au(data, decile, event, model, time="time"):
-    """Get GSR event property dataset for all grid points."""
+def get_gsr_events_gridded(da, da_quantile, time_dim="time", **kwargs):
+    """Get GSR event property dataset for all grid points.
+
+    This function fixes some issues in `get_gsr_events` when using gridded data.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Data values (e.g., rainfall)
+    da_quantile : xr.DataArray
+        Data converted to quantiles
+    time_dim : str, default "time"
+        Name of the core time dimension in which to search for events
+    **kwargs : dict
+        Additional arguments to pass to `get_gsr_events`
+
+    Returns
+    -------
+    ds : xr.Dataset
+        Dataset of event properties
+    """
 
     def convert_time(time_start, time_end):
         """Convert time_start and time_end to datetime64[ns]."""
+
         if not isinstance(time_start, (float, int)) and pd.notnull(time_start):
             time_start = np.datetime64(time_start.isoformat())
             time_end = np.datetime64(time_end.isoformat())
@@ -404,74 +361,106 @@ def get_events_au(data, decile, event, model, time="time"):
             time_start = pd.NaT
         return time_start, time_end
 
-    file_events = home / f"data/{event.type}_{event.n}yr_events_aus_{model}.nc"
+    _, ds = get_gsr_events(da, da_quantile, time_dim=time_dim, **kwargs)
 
-    if file_events.exists():
-        ds = xr.open_dataset(file_events)
-        ds = ds.sel(lat=slice(-52, -23))
-
-    else:
-        _, ds = gsr_events(
-            data,
-            decile,
-            time=time,
-            threshold=event.threshold,
-            min_duration=event.min_duration,
-            fixed_duration=event.fixed_duration,
-            minimize=event.minimize,
-            operator=event.operator,
+    if ds["time_start"].dtype == "object":
+        # Convert time_start and time_end to datetime64[ns]
+        ds["time_start"], ds["time_end"] = xr.apply_ufunc(
+            convert_time,
+            ds.time_start,
+            ds.time_end,
+            input_core_dims=[[], []],
+            output_core_dims=[[], []],
+            vectorize=True,
+            dask="parallelized",
         )
-
-        if ds["time_start"].dtype == "object":
-            # Convert time_start and time_end to datetime64[ns]
-            ds["time_start"], ds["time_end"] = xr.apply_ufunc(
-                convert_time,
-                ds.time_start,
-                ds.time_end,
-                input_core_dims=[[], []],
-                output_core_dims=[[], []],
-                vectorize=True,
-                dask="parallelized",
-            )
-        ds = ds.load()
-        ds.to_netcdf(file_events)
 
     # Check event durations meets criteria
     duration = ds.duration.values
-    if event.fixed_duration:
-        assert np.all(duration == event.min_duration, where=~np.isnan(duration))
+    if kwargs.get("fixed_duration", False):
+        assert np.all(duration == kwargs["min_duration"], where=~np.isnan(duration))
     else:
-        assert np.all(duration >= event.min_duration, where=~np.isnan(duration))
+        assert np.all(duration >= kwargs["min_duration"], where=~np.isnan(duration))
 
     return ds
 
 
-def event_inds(m, min_duration):
-    """Get indexes of min_duration events in masked decile timeseries."""
-    if isinstance(m, xr.DataArray):
-        m = m.values  # Only works for numpy arrays
+def run_start_inds_1d(da_mask, run_duration):
+    """Get indexes where a run of consecutive begins.
 
-    if min_duration == 1:
-        inds = np.flatnonzero(m)
-    elif min_duration == 2:
-        inds = np.flatnonzero(m[:-1] & m[1:])
+    Parameters
+    ----------
+    da_mask : array-like
+        Boolean mask of sample above/ below threshold (1D timeseries)
+    run_duration : int
+        Number of consecutive elements in run
+
+    Returns
+    -------
+    inds : array-like
+        Indexes where a run of consecutive elements starts
+
+    Notes
+    -----
+    - Overlapping runs are allowed (unlike get_gsr_events)
+    - Runs has length of exactly `run_duration`
+    - Only implemented for min_duration > 3
+    - Forces loading into memory
+    """
+
+    assert da_mask.ndim == 1, "Input data must be 1D"
+    assert run_duration in [1, 2, 3], "run_duration > 3 not implemented"
+
+    if isinstance(da_mask, xr.DataArray):
+        da_mask = da_mask.values  # Only works for numpy arrays
+
+    if run_duration == 1:
+        # Return all indexes where True
+        inds = np.flatnonzero(da_mask)
+
+    elif run_duration == 2:
+        # Find inds where the i and i+1 elements match
+        inds = np.flatnonzero(da_mask[:-1] & da_mask[1:])
+        # Drop consecutive "False" events (not needed here?)
+        inds = inds[da_mask[inds]]
+
+    elif run_duration == 3:
+        # Find inds where the i,i+1,i+2 elements match
+        inds = np.flatnonzero(da_mask[:-2] & da_mask[1:-1] & da_mask[2:])
         # Drop consecutive "False" events
-        inds = inds[m[inds]]
-    elif min_duration == 3:
-        inds = np.flatnonzero(m[:-2] & m[1:-1] & m[2:])
-        # Drop consecutive "False" events
-        inds = inds[m[inds]]
+        inds = inds[da_mask[inds]]
+
     return inds
 
 
-def event_next_values(m, da, min_duration):
-    """Find indexes of min_duration events and bin the next year values."""
-    inds = event_inds(m, min_duration)
+def get_run_next_values_1d(m, da, min_duration):
+    """Find indexes of min_duration events and bin the next year values.
+
+    Parameters
+    ----------
+    m : array-like
+        Boolean mask of sample above/ below threshold
+    da : array-like
+        Data values
+    min_duration : int
+        Minimum duration of event
+
+    Returns
+    -------
+    k : array-like
+        Next year data values after events (NaN if no event)
+    n : int
+        Total number of next year values
+    """
+
+    inds = run_start_inds_1d(m, min_duration)
 
     # Indexes of following years that meet criteria
     inds_next = np.array(list(inds)) + min_duration
+
     # Drop indexes that are out of bounds
     inds_next = inds_next[inds_next < len(m)]
+
     k = np.zeros(da.size) * np.nan
     # Return zeros if there are no events
     if inds_next.size == 0:
@@ -480,11 +469,14 @@ def event_next_values(m, da, min_duration):
     # Get the values of the following years
     da_next = da[inds_next]
 
+    # Drop any transitions to NaN
+    da_next = da_next[~np.isnan(da_next)]
+
     # Total number of next year values
     total = da_next.size
 
     # Assign the next year values to the correct indexes
-    k[: len(inds_next)] = da_next
+    k[: len(da_next)] = da_next
 
     return k, total
 
@@ -494,79 +486,80 @@ def transition_probability(
     threshold,
     operator,
     min_duration,
-    var="decile",
-    time="time",
+    var="tercile",
+    time_dim="time",
     binned=True,
 ):
-    """Calculate the probability of transitioning to another year of a low/high decile/tercile.
+    """Calculate the probability of transitioning to another year of a low/high quantile.
 
     Parameters
     ----------
-    da : xa.DataArray
-        Deciles or terciles
+    da : xr.DataArray
+        Data converted to quantiles
     threshold : float
-        Decile threshold
+        Quantile threshold
     operator : {"less", "greater"}
         Operator to apply a threshold
     min_duration : int or array-like
         Minimum duration of event
     var : {"decile", "binned_decile", "tercile"}, optional
-        Variable to bin, by default "decile"
-    time : str, optional
+        Variable to bin, by default "tercile" ()
+    time_dim : str, optional
         Name of the time dimension, by default "time"
     binned : bool, optional
-        Bin the deciles into dry/medium/wet or 1-10, by default True
+        Bin the quantiles into dry/medium/wet or 1-10, by default True
 
     Returns
     -------
     k : float or xr.DataArray
-        Number of next year deciles (q=dry, medium, wet)
+        Number of next year quantiles (q=dry, medium, wet)
     n : float or xr.DataArray
-        Total number of next year deciles
+        Total number of next year quantiles
     bins : array-like
         Bin edges of output
 
     Notes
     -----
     - Calculates the probability of transitioning from n years in a row
-    above/below a decile threshold to other deciles (i.e., dry, medium, wet).
-    - Note that this includes overlapping years (unlike gsr_events).
+    above/below a quantile threshold to other quantiles (i.e., dry, medium, wet).
+    - Note that this includes overlapping years (unlike get_gsr_events).
     - If the last year in the series meets the criteria, it is dropped from
     the total event count next year because the 'next year' is not known.
     - Used for persistance_probability, transitions_probability and
     transition_matrix plots.
     """
-    assert np.all(min_duration <= 3)
 
-    # Create decile threshold mask
+    assert np.all(min_duration <= 3)  # requires at least 2 years of data after event?
+    assert time_dim in da.dims, f"Time {time_dim} dimension not found in data array"
+
+    # Create quantile threshold mask
     if operator == "less":
-        threshold = threshold if var != "tercile" else 1
         m = da <= threshold
     else:
-        threshold = threshold if var != "tercile" else 3
         m = da >= threshold
 
     if isinstance(min_duration, int):
         min_duration = np.array([min_duration])
     if isinstance(min_duration, np.ndarray):
-        min_duration = xr.DataArray(min_duration, dims="n")
+        min_duration = xr.DataArray(min_duration, dims="n", attrs={"n": "n"})
 
     da_next, n = xr.apply_ufunc(
-        event_next_values,
+        get_run_next_values_1d,
         m,
         da,
         min_duration,
-        input_core_dims=[[time], [time], []],
-        output_core_dims=[[time], []],
+        input_core_dims=[[time_dim], [time_dim], []],
+        output_core_dims=[[time_dim], []],
         vectorize=True,
         dask="parallelized",
-        output_dtypes=["float64"] * (da[time].size + 1),
+        output_dtypes=["float64"] * 2,
     )
+
     if not binned:
         return da_next, n
 
     elif binned:
-        # Create bins for deciles (dry/medium/wet) or bin each decile/tercile
+        # Create bins for quantiles (dry/medium/wet) or bin each quantile
         if var == "decile":
             bins = np.arange(1, 12)
         elif var == "binned_decile":
@@ -577,34 +570,40 @@ def transition_probability(
         k, _ = xr.apply_ufunc(
             np.histogram,
             da_next,
-            input_core_dims=[[time]],
+            input_core_dims=[[time_dim]],
             output_core_dims=[["q"], ["b"]],
             vectorize=True,
             dask="parallelized",
             kwargs=dict(bins=bins),
-            output_dtypes=["int"] * ((len(bins) * 2) - 1),
+            output_dtypes=["int"] * 2,  # ((len(bins) * 2) - 1),
+            # output_sizes={"q": len(bins) - 1, "b": len(bins) - 1},
+            dask_gufunc_kwargs={
+                "output_sizes": {"q": len(bins) - 1, "b": len(bins) - 1}
+            },
         )
         return k, n, bins
 
 
 def downsampled_transition_probability(
-    da, event, regions, target="AGCD", n_samples=1000, var="tercile"
+    da, event, regions, target="AGCD", n_resamples=10000, var="tercile"
 ):
     """Resample model transition probabilities to a target sample sizes."""
-    rng = np.random.default_rng(seed=42)
+
+    assert var == "tercile", "Only tercile variable currently supported"
+    rng = np.random.default_rng(seed=0)
     bins = np.arange(1, 5)
     ds = xr.Dataset(coords={"x": regions, "n": np.arange(1, 4), "q": bins[:-1]})
 
     if target == "AGCD":
         # AGCD sample sizes for each region
-        dv_agcd = gsr_data_regions("AGCD", regions)
+        dv_agcd = gsr_data_regions("AGCD")
         k_agcd, n_agcd, _ = transition_probability(
             dv_agcd.tercile,
             event.threshold,
             event.operator,
             np.arange(1, 4),
             var=var,
-            time="time",
+            time_dim="time",
             binned=True,
         )
         ds["total"] = n_agcd.T.astype(dtype=int)
@@ -617,7 +616,7 @@ def downsampled_transition_probability(
         ds["total"] = target
 
     ds["k"] = xr.DataArray(
-        np.zeros((len(regions), 3, 3, n_samples)), dims=("x", "n", "q", "sample")
+        np.zeros((len(regions), 3, 3, n_resamples)), dims=("x", "n", "q", "sample")
     )
 
     # Get all of the next year terciles
@@ -625,9 +624,9 @@ def downsampled_transition_probability(
         da,
         event.threshold,
         event.operator,
-        np.arange(1, 4),
+        np.arange(1, 4),  # event durations (>3 not implemented)
         var=var,
-        time="lead_time",
+        time_dim="lead_time",
         binned=False,
     )
     dx_next_stacked = dx_next.stack(dict(sample=["ensemble", "init_date", "lead_time"]))
@@ -636,9 +635,9 @@ def downsampled_transition_probability(
         for j in range(3):
             # Drop NaNs
             dx = dx_next_stacked.isel(n=j, x=i).dropna("sample", how="all")
-            # Draw random samples (n_samples of size agcd_sample_sizes)
+            # Draw random samples (n_resamples of size agcd_sample_sizes)
             dx_sampled = rng.choice(
-                dx, (ds.total.isel(n=j, x=i).item(), n_samples), replace=True
+                dx, (ds.total.isel(n=j, x=i).load().item(), n_resamples), replace=True
             )
             dx_sampled = xr.DataArray(dx_sampled, dims=("event", "sample"))
 
@@ -660,19 +659,138 @@ def downsampled_transition_probability(
     return ds
 
 
-def transition_time(decile, min_duration, time="time", transition_from="dry"):
-    """Count the transition times between n-year dry/wet events and next high/low decile year.
+def get_event_duration_counts(
+    event, ds, m, density, downsample=True, n_resamples=None, N_obs=None
+):
+    """Get counts of event durations for a specific dataset and region.
+
+    For models other than AGCD, downsample to match number of samples in AGCD data.
 
     Parameters
     ----------
-    decile : xa.DataArray
-        Decile values
+    event : Events
+        Event metadata.
+    ds : xarray.Dataset
+        Dataset containing data var and quantile data arrays at a single region.
+    m : str
+        Model name.
+    density : bool
+        If True, convert counts to probability (%).
+    downsample : bool
+        If True, downsample model data to match N_obs sample size.
+    n_resamples : int, optional
+        Number of resamples for downsampling (required for models other than AGCD).
+    N_obs : int, optional
+        Number of samples in AGCD data (required for models other than AGCD).
+
+    Returns
+    -------
+    counts : array-like
+        Counts of event durations in each bin.
+    bins : array-like
+        Histogram bin edges.
+    N : int
+        Total number of samples used to calculate counts.
+    """
+
+    assert (
+        "x" not in ds.pr.dims
+    ), "Dataset must be for a single region (no 'x' dimension)."
+
+    min_duration = 1
+    # Plot durations up to 9 years
+    bins = np.arange(min_duration, 11)
+    time_dim = "lead_time" if m != "AGCD" else "time"
+
+    _, ds_events = get_gsr_events(
+        ds.pr,
+        ds.tercile,
+        threshold=event.threshold,
+        min_duration=min_duration,
+        operator=event.operator,
+        fixed_duration=False,
+        time_dim=time_dim,
+    )
+
+    if m == "AGCD":
+        N = ds[time_dim].size
+        counts, _ = np.histogram(ds_events.duration, bins=bins)
+
+    elif not downsample:
+        # No downsampling, use all model data
+        ds_events = ds_events.stack(dict(sample=["ensemble", "init_date"]))
+        counts, _ = np.histogram(ds_events.duration, bins=bins)
+
+        # Get number of samples
+        ds_stacked = ds.stack(dict(sample=["ensemble", "init_date", "lead_time"]))
+        N = ds_stacked.dropna("sample", how="all").sample.size
+
+    else:
+        # Get n_resamples of model subsamples
+        # Approximate number of obs samples (nb "events" must calculated over lead_time dim)
+        ds_events = ds_events.stack(dict(sample=["ensemble", "init_date"]))
+        # Get N samples of subsampled data
+        # len(subsample) = n_init_blocks * len(lead_time) (e.g., 12x10-year runs)
+        n_lead = ds[time_dim].size
+        n_init_blocks = N_obs // n_lead
+        n_init_blocks = int(round(N_obs / n_lead, 0))
+        N = n_lead * n_init_blocks
+
+        if m == "CAFE":
+            # Half of the CAFE runs have one less lead time
+            _n_lead = (n_lead + (n_lead - 1)) / 2
+            N = _n_lead * n_init_blocks
+
+        # Select n_resamples of subsamples
+        rng = np.random.default_rng(seed=42)
+        ds_events_sampled = rng.choice(
+            ds_events.duration.T,
+            (n_resamples, n_init_blocks),
+            replace=True,
+            axis=0,
+        )
+        ds_events_sampled = xr.DataArray(
+            ds_events_sampled, dims=("sample", "block", "event")
+        )
+
+        # Stack the events in each subsample (sample, block, event) -> (sample, subsample)
+        ds_events_sampled = ds_events_sampled.stack(dict(subsample=["block", "event"]))
+
+        # Bin the durations in each subsample
+        counts, _ = xr.apply_ufunc(
+            np.histogram,
+            ds_events_sampled,
+            input_core_dims=[["subsample"]],
+            output_core_dims=[["bin"], ["bin_edges"]],
+            vectorize=True,
+            dask="parallelized",
+            kwargs=dict(bins=bins),
+            output_dtypes=["int"] * ((len(bins) * 2) - 1),
+        )
+
+    if density:
+        # Convert from counts to probability (%)
+        counts = (counts / N) * 100
+    return counts, bins, N
+
+
+def transition_time(
+    quantiles, min_duration, time_dim="time", transition_from="dry", var="tercile"
+):
+    """Count transitions between n-year dry/wet events and next high/low year.
+
+    Parameters
+    ----------
+    quantiles : xr.DataArray
+        Data converted to quantiles (e.g., deciles, terciles)
     min_duration : int
         Minimum duration of event
-    time : str, optional
+    time_dim : str, optional
         Name of the time dimension, by default "time"
     transition_from : {"dry", "wet"}, optional
         Transition from dry or wet events, by default "dry"
+    var : {"decile", "tercile"}, optional
+        Variable to bin, by default "tercile"
 
     Returns
     -------
@@ -681,11 +799,13 @@ def transition_time(decile, min_duration, time="time", transition_from="dry"):
     bins : array-like
         Bin edges of output
     """
+
     assert min_duration <= 3
 
     def transition_years(m0, m1, min_duration, bins):
-        """Find indexes of min_duration events and bin the next year deciles."""
-        inds = event_inds(m0, min_duration)
+        """Find indexes of min_duration events and bin the next year quantile."""
+
+        inds = run_start_inds_1d(m0, min_duration)
         inds_alt = np.flatnonzero(m1)
         # Number of years between dry/wet event and the next wet/dry year
         if inds_alt.size == 0:
@@ -702,9 +822,13 @@ def transition_time(decile, min_duration, time="time", transition_from="dry"):
         k, _ = np.histogram(n_years, bins=bins)
         return k
 
-    # Create decile threshold mask
-    m0 = decile <= 3
-    m1 = decile >= 8
+    # Create quantiles threshold mask
+    if var == "decile":
+        m0 = quantiles <= 3
+        m1 = quantiles >= 8
+    elif var == "tercile":
+        m0 = quantiles <= 1
+        m1 = quantiles >= 3
     if transition_from == "wet":
         m0, m1 = m1, m0
 
@@ -716,9 +840,9 @@ def transition_time(decile, min_duration, time="time", transition_from="dry"):
 
     k = xr.apply_ufunc(
         transition_years,
-        m0,
-        m1,
-        input_core_dims=[[time], [time]],
+        m0.compute(),
+        m1.compute(),
+        input_core_dims=[[time_dim], [time_dim]],
         output_core_dims=[["years"]],
         vectorize=True,
         # dask="parallelized",
@@ -727,3 +851,38 @@ def transition_time(decile, min_duration, time="time", transition_from="dry"):
     )
 
     return k, bins
+
+
+def binom_ci(n, p=1 / 3, confidence_level=0.95):
+    """Apply binomial test to determine confidence intervals.
+
+    Parameters
+    ----------
+    n : int or xr.DataArray
+        Total number of samples
+    p : float, optional
+        Expected probability, by default 1/3
+    confidence_level : float, optional
+        Confidence level, by default 0.95
+
+    Returns
+    -------
+    ci0 : float or xr.DataArray
+        Lower confidence interval
+    ci1 : float or xr.DataArray
+        Upper confidence interval
+    """
+
+    assert confidence_level < 1, "Confidence level must be between 0 and 1"
+    ci0, ci1 = xr.apply_ufunc(
+        scipy.stats.binom.interval,
+        confidence_level,
+        n,
+        input_core_dims=[[], []],
+        output_core_dims=[[], []],
+        vectorize=True,
+        dask="parallelized",
+        kwargs=dict(p=p),
+        output_dtypes=["float64", "float64"],
+    )
+    return ci0, ci1

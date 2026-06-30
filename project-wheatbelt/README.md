@@ -18,10 +18,13 @@ in the WA and SA regions.
 These scripts require first saving the AGCD and DCPP model Apr-Oct rainfall (global grid and over the SA and WA regions) - see [wheatbelt_config.mk](https://github.com/AusClimateService/unseen-projects/blob/master/project-wheatbelt/wheatbelt_config.mk).
 
 #### `process_gsr_data.py`
-Returns datasets of GSR variables `pr`, `decile` and `tercile`. The function `gsr_data_regions` returns GSR data averaged over the WA and SA regions (stacked along dimension `x`). The `gsr_data_aus_AGCD` and `gsr_data_aus_DCPP` functions return GSR variables on their native grid subset to Australia south of around 25S.
+Defines paths for datafiles and where to save figures.
+Contains functions to load and process GSR data from AGCD and DCPP models.
+Returns datasets of GSR variables `pr`, `decile` or `tercile`. The function `gsr_data_regions` returns GSR data averaged over the WA and SA regions (stacked along dimension `x`). The `gsr_data_aus_AGCD` and `gsr_data_aus_DCPP` functions return GSR variables on their native grid subset to Australia south of around 25S. Also prints information on model grid and sample sizes.
 
 #### `gsr_events.py`
-Contains functions to define n-year GSR events and calculate transition probabilities. GSR events are based on consecutive years of low or high decile/tercile GSR. Note that transition probabilities use a modified event definition that includes overlapping years.
+Contains functions to define n-year GSR events and calculate transition probabilities. GSR events are based on consecutive years of low or high decile/tercile GSR. 
+Includes functions to calculat: confidence intervals, transition probabilities, downsampled_transition_probability, transition_time, . Note that transition probabilities use a modified event definition that includes overlapping years.
 
 #### `plot_gsr_regions.py`
 Contains functions to plot event statistics and transition probabilities for the WA and SA regions.
@@ -29,11 +32,6 @@ Contains functions to plot event statistics and transition probabilities for the
 #### `plot_gsr_maps.py`
 Contains functions to plot spatial maps of event statistics and transition probabilities.
 
-#### `utils.py`
-Contains functions to calculate confidence intervals and combine figures.
-
-#### `run_gsr_plot.py`
-Runs plot functions in `plot_gsr_regions.py` and `plot_gsr_maps.py` for each model.
 
 ## Software environment
 
