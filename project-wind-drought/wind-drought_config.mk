@@ -5,7 +5,7 @@ PROJECT_DIR=/g/data/xv83/unseen-projects/outputs/wind-drought
 ## Metric calculation
 
 VAR=sfcWind
-REGION=swis
+REGION=nem-2030
 # nem-2030 se-2030 swis nwis
 SHAPEFILE=${PROJECT_DIR}/shapefiles/${REGION}.shp
 SHAPE_OVERLAP=0.1

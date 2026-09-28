@@ -1,3 +1,5 @@
+*There's a companion repo [here](https://github.com/dougrichardson/wind_drought).*
+
 ## Wind drought analysis
 
 The wind drought analysis involves calculating the spatially averaged daily mean surface wind speed

@@ -13,5 +13,7 @@ TIMESCALE=annual
 VAR=tasmax
 UNITS=degC
 TIME_FREQ=YE-DEC
-METRIC_OPTIONS=--variables ${VAR} --lat_bnds 45 52 --lon_bnds 119 123 --spatial_agg weighted_mean --time_freq ${TIME_FREQ} --time_agg max --input_freq D --time_agg_min_tsteps 360 --time_agg_dates --units ${VAR}='${UNITS}' 
+METRIC_OPTIONS=--variables ${VAR} --lat_bnds 45 52 --lon_bnds 237 241 --spatial_agg weighted_mean --time_freq ${TIME_FREQ} --time_agg max --input_freq D --time_agg_min_tsteps 360 --time_agg_dates --units ${VAR}='${UNITS}' 
 METRIC_OPTIONS_FCST= --output_chunks lead_time=50 --reset_times
+
+# lon_bnds are -123 -119 for ERA5 and 237 241 for DCPP

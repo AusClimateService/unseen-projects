@@ -3,6 +3,7 @@
 import glob
 from collections import Counter
 import calendar
+from datetime import datetime, timedelta
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ import xclim as xc
 
 from unseen import array_handling
 from unseen import time_utils
+from unseen import fileio
 
 
 def plot_timing(event_starts, model_name):
@@ -41,35 +43,115 @@ def plot_timing(event_starts, model_name):
 def ensemble_to_run(model_name, ensnum):
     """Map ensemble number to DCPP model run"""
 
-    ensemble_to_run = {   
-        'CanESM5': f'r{ensnum}i1p2f1',
-        'CMCC-CM2-SR5': f'r{ensnum}i1p1f1',
-        'EC-Earth3': f'r{ensnum}i1p1f1' if ensnum <= 10 else f'r{ensnum-5}i2p1f1',
-        'HadGEM3-GC31-MM': f'r{ensnum}i1p1f2',
-        'IPSL-CM6A-LR': f'r{ensnum}i1p1f1',
-        'MIROC6': f'r{ensnum}i1p1f1',
-        'MPI-ESM1-2-HR': f'r{ensnum}i1p1f1',
-        'MRI-ESM2-0': f'r{ensnum}i1p1f1',
-        'NorCPM1': f'r{ensnum}i1p1f1' if ensnum <= 10 else f'r{ensnum-10}i2p1f1'
+    norcpm_dict = {
+        1: 'r1i1p1f1',
+        2: 'r1i2p1f1',
+        3: 'r2i1p1f1',
+        4: 'r2i2p1f1',
+        5: 'r3i1p1f1',
+        6: 'r3i2p1f1',
+        7: 'r4i1p1f1',
+        8: 'r4i2p1f1',
+        9: 'r5i1p1f1',
+        10: 'r5i2p1f1',
+        11: 'r6i1p1f1',
+        12: 'r6i2p1f1',
+        13: 'r7i1p1f1',
+        14: 'r7i2p1f1',
+        15: 'r8i1p1f1',
+        16: 'r8i2p1f1',
+        17: 'r9i1p1f1',
+        18: 'r9i2p1f1',
+        19: 'r10i1p1f1',
+        20: 'r10i2p1f1',
     }
-    run = ensemble_to_run[model_name]
+
+    ecearth_dict = {
+        1: 'r1i1p1f1',
+        2: 'r2i1p1f1',
+        3: 'r3i1p1f1',
+        4: 'r4i1p1f1',
+        5: 'r5i1p1f1',
+        6: 'r6i1p1f1',
+        7: 'r6i2p1f1',
+        8: 'r7i1p1f1',
+        9: 'r7i2p1f1',
+        10: 'r8i1p1f1',
+        11: 'r8i2p1f1',
+        12: 'r9i1p1f1',
+        13: 'r9i2p1f1',
+        14: 'r10i1p1f1',
+        15: 'r10i2p1f1',
+    }
+
+    if model_name == 'EC-Earth3':
+        run = ecearth_dict[ensnum]
+    elif model_name == 'NorCPM1':
+        run = norcpm_dict[ensnum]
+    else:
+        ensemble_to_run = { 
+            'BCC-CSM2-MR': f'r{ensnum}i1p1f1',
+            'CanESM5': f'r{ensnum}i1p2f1',
+            'CMCC-CM2-SR5': f'r{ensnum}i1p1f1',
+            'HadGEM3-GC31-MM': f'r{ensnum}i1p1f2',
+            'IPSL-CM6A-LR': f'r{ensnum}i1p1f1',
+            'MIROC6': f'r{ensnum}i1p1f1',
+            'MPI-ESM1-2-HR': f'r{ensnum}i1p1f1',
+            'MRI-ESM2-0': f'r{ensnum}i1p1f1',
+        }
+        run = ensemble_to_run[model_name]
 
     return run
 
 
-def find_dcpp_data(event_df, model_name):
-    """Find DCPP data for a dataframe of events."""
+def check_forecast_match(sfcWind_files, start_str, wddx_value, pctl10, region):
+    """Check that the forecast files match the event."""
+
+    start_date = datetime.strptime(start_str, '%Y-%m-%d')
+    event_length = int(wddx_value)
+    end_date = start_date + timedelta(days=event_length-1)
+    end_str = end_date.strftime('%Y-%m-%d')
+    ds = fileio.open_dataset(
+        sfcWind_files,
+        sel={'time': slice(start_str, end_str)},
+        shapefile=f'/g/data/xv83/unseen-projects/outputs/wind-drought/shapefiles/{region}.shp',
+        shape_overlap=0.1,
+        spatial_agg='weighted_mean', 
+    )
+    assert len(ds['sfcWind'].values) == event_length
+    assert np.all(ds['sfcWind'].values < pctl10), 'Incorrect forecast file'
+
+
+def find_dcpp_data(event_df, model_name, pctl10, region):
+    """Find DCPP data for a dataframe of events.
+
+    Parameters
+    ----------
+    event_df : pandas DataFrame
+        List of wind drought events
+    model_name : str
+        Name of DCPP model
+    pctl10: float
+        10th percentile of area averaged surface wind speed
+    region: {'nem-2030', 'nwis', 'swis', 'se-2030'}
+        Name of spatial region
+
+    Returns
+    -------
+    Paths to forecasts corresponding to the event
+    """
 
     init_adjustment = {
+        'BCC-CSM2-MR': 0,
         'CanESM5': -1,
-        'CMCC-CM2-SR5': 0,
-        'EC-Earth3': 0,
-        'HadGEM3-GC31-MM': 0,
+        'CMCC-CM2-SR5': -1,
+        'EC-Earth3': -1,
+        'HadGEM3-GC31-MM': -1,
         'IPSL-CM6A-LR': -1,
-        'MIROC6': 0,
-        'MPI-ESM1-2-HR': 0,
-        'MRI-ESM2-0': 0,
-        'NorCPM1': 0,
+        'MIROC6': -1,
+        'MPI-ESM1-2-HR': -1,
+        'MRI-ESM2-0': -1,
+        'NorCPM1': -1,
     }
 
     assert model_name in init_adjustment
@@ -81,7 +163,13 @@ def find_dcpp_data(event_df, model_name):
         start_date = row['event_start'].strftime('%Y-%m-%d')
         wddx_value = row['event_length']
         print(f'{wddx_value} day event starting {start_date}: initialisation year {init_date}, ensemble member {run}')
-        available_data = glob.glob(f'/g/data/oi10/replicas/CMIP6/DCPP/*/{model_name}/dcppA-hindcast/s{init_date}-{run}/day/*')
+        sfcWind_files = glob.glob(f'/g/data/oi10/replicas/CMIP6/DCPP/*/{model_name}/dcppA-hindcast/s{init_date}-{run}/day/sfcWind/*/*/*.nc')
+        try:
+            check_forecast_match(sfcWind_files, start_date, wddx_value, pctl10, region)
+        except AssertionError:
+            print(f'These appear to be the wrong sfcWind files: {sfcWind_files}')
+            continue
+        available_data = glob.glob(f'/g/data/oi10/replicas/CMIP6/DCPP/*/{model_name}/dcppA-hindcast/s{init_date}-{run}/*ay/*')
         for path in available_data:
             print(path)
 
